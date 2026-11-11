@@ -74,7 +74,10 @@ tests/
   test_specs.py          number specs and fact pools
   test_slots.py          repeats, spacing, seeds
   test_fit.py            one-page size math
-  test_auth.py           register, sign-in, sign-out, cookies
+  test_web.py            health, sign-in redirect, headers, static files (slice 0-1)
+  test_db.py             schema, migrations, WAL, foreign keys (slice 0-1)
+  test_security.py       password rules, hashing, tokens (slice 1)
+  test_auth.py           register, sign-in, remembered devices, sign-out, password change (slice 1)
   test_isolation.py      cross-account 404s
   test_sheets.py         save, reprint, regenerate, delete
   test_ratings.py        rating form and advancement counts

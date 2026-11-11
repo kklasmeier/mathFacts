@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Welcome{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Your account is ready</h1>
+  <p>You are signed in on this device. This browser will stay signed in for up to a year, or until you sign out.</p>
+  <p class="muted">Use <strong>Sign out</strong> on a shared computer when you are finished.</p>
+  <p><a class="button" href="{{ url_for('web.index') }}">Continue</a></p>
+</section>
+{% endblock %}

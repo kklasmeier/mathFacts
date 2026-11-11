@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Create account{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <h1>Create an account</h1>
+  {% if first_run %}
+    <p class="notice">You are setting up Math Facts. The first account becomes the administrator.</p>
+  {% endif %}
+  {% if errors.form %}
+    <div class="error" role="alert">{{ errors.form }}</div>
+  {% endif %}
+  <form method="post" action="{{ url_for('auth.register') }}" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <label>Email
+      <input name="email" type="email" value="{{ values.email or '' }}" autocomplete="email" required>
+      {% if errors.email %}<span class="error">{{ errors.email }}</span>{% endif %}
+    </label>
+
+    <label>Username
+      <input name="username" value="{{ values.username or '' }}" autocomplete="username" required>
+      <span class="hint">3 to 30 letters, numbers, underscores, dashes, or periods.</span>
+      {% if errors.username %}<span class="error">{{ errors.username }}</span>{% endif %}
+    </label>
+
+    <label>Password
+      <input name="password" type="password" autocomplete="new-password" minlength="10" required>
+      <span class="hint">At least 10 characters. A phrase is fine.</span>
+      {% if errors.password %}<span class="error">{{ errors.password }}</span>{% endif %}
+    </label>
+
+    <label>Confirm password
+      <input name="confirm" type="password" autocomplete="new-password" required>
+      {% if errors.confirm %}<span class="error">{{ errors.confirm }}</span>{% endif %}
+    </label>
+
+    <label class="check">
+      <input name="guardian" type="checkbox" value="yes">
+      <span>I am a parent or legal guardian, and I accept the <a href="{{ url_for('auth.terms') }}">terms and privacy notice</a>.</span>
+    </label>
+    {% if errors.guardian %}<span class="error">{{ errors.guardian }}</span>{% endif %}
+
+    <div class="honeypot" aria-hidden="true">
+      <label>Website <input name="website" tabindex="-1" autocomplete="off"></label>
+    </div>
+
+    <button type="submit" class="button">Create account</button>
+  </form>
+  <p class="links"><a href="{{ url_for('auth.login') }}">I already have an account</a></p>
+</section>
+{% endblock %}

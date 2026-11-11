@@ -1,6 +1,6 @@
 # Math Facts Worksheet Generator — Product Spec
 
-**Version:** 1.13 (draft)
+**Version:** 1.14 (draft)
 **Owner:** Kevin
 **Target platform:** Raspberry Pi (web app on the home network first; external hosting with HTTPS is Phase 2)
 **Primary language:** Python
@@ -543,7 +543,8 @@ Registration is **open to anyone who can reach the site**. There are no invite c
 |---|---|---|
 | `did` (device ID) | Identifies the browser/device for tracking and logging. | Random 128-bit ID. Set the first time any visitor loads the Register or Sign-in page (before login), so failed attempts can also be tied to a device. Not a secret. Lifetime ~2 years. |
 | `rt` (remembered-sign-in token) | Lets a returning device be signed in automatically. | Set after every successful **hard login or registration**. Contains a public token ID plus a long random secret. Only a **hash** of the secret is stored on the server. `HttpOnly`, `SameSite=Lax`, `Secure` when HTTPS is on. Lifetime: 365 days, **sliding** (renewed each time it's used). |
-| Session cookie | The active session for the current visit. | `HttpOnly`, `SameSite=Lax`. Server-side session record; idle timeout 12 hours. |
+| `sid` (session cookie) | The active session for the current visit. | `HttpOnly`, `SameSite=Lax`. The cookie holds a random token; the server stores only its SHA-256 hash in `sessions`. Idle timeout 12 hours, renewed on use. |
+| `session` (framework cookie) | Holds the form (CSRF) token and one-time notices such as "Your password has been changed." | Signed by the server secret. Holds no account data and no sign-in state. |
 
 All cookies are first-party and used only for sign-in and security. There are no advertising or analytics cookies.
 
@@ -557,7 +558,7 @@ All cookies are first-party and used only for sign-in and security. There are no
 **Soft login (cookie)**
 1. A request arrives with no valid session but with a valid `rt` cookie.
 2. The server looks up the token by its ID and checks: the secret matches its stored hash, the token is not revoked or expired, and the account is **Active**.
-3. If valid, a new session is created (login type **soft**), the secret is **rotated** (a new secret is issued in `rt`; the old one stays valid for 60 seconds to tolerate simultaneous requests), the expiry is extended, and the user continues straight to the page they requested with no password prompt.
+3. If valid, a new session is created (login type **soft**), the secret is **rotated** (a new secret is issued in `rt`; the old one stays valid for 60 seconds to tolerate simultaneous requests), the expiry is extended, and the user continues straight to the page they requested with no password prompt. A request that presents the old secret within those 60 seconds still gets a session, but **no new cookie is issued**, so the newest cookie stays valid for every tab. After 60 seconds, the old secret counts as a stolen or tampered cookie (step 5).
 4. The event `soft_login` is logged with the device ID, IP address, and browser summary. A soft login is logged **once per new session**, not on every page request.
 5. **Stolen or tampered cookie:** if the token ID exists but the secret does not match, that token is revoked, the cookie is cleared, the event `suspicious_cookie` is logged, and the user must do a hard login.
 6. If the token is unknown, expired, or revoked, the cookie is cleared and the user is shown the Sign-in page.
@@ -569,7 +570,8 @@ All cookies are first-party and used only for sign-in and security. There are no
 
 **Other rules**
 - Passwords are stored only as salted hashes (argon2id preferred; scrypt acceptable). Never logged or emailed.
-- **Brute-force protection:** limit failed sign-ins (default 5 per 15 minutes per account and per IP), with a temporary lockout and a message that doesn't reveal whether the account exists. Failures are logged with the device ID.
+- **Brute-force protection:** limit failed sign-ins to **5 per 15 minutes per username or email** (any letter case, whether or not the account exists) and **20 per 15 minutes per network address**. The network limit is higher so that a household sharing one address is not locked out by one mistyped password. A lockout shows a message that does not reveal whether the account exists. Failures are logged with the device ID.
+- **Real client addresses:** nginx passes the visitor's address in `X-Forwarded-For`. The app trusts that header only from the local nginx, so the log and the limits record the visitor, not the server.
 - **Inactive accounts cannot sign in** and any existing sessions and remembered devices stop working on the next request (see 5.13).
 - CSRF protection on all state-changing requests.
 - Sensitive actions (change password, change email, delete account, export all data) require re-entering the current password, even when signed in by a soft login.
@@ -707,6 +709,9 @@ remembered_logins(id,                                    -- public token ID (in 
 sessions(id, account_id, device_id, login_type,          -- 'hard' | 'soft'
          remembered_login_id NULL, created_at, last_seen_at, expires_at,
          ended_at NULL)
+
+rate_events(id, bucket, at)                              -- sliding-window counters, e.g. registration
+                                                         --   attempts per address (5 per hour)
 
 login_events(id, at, event_type, success BOOL,
              account_id NULL,                            -- NULL for unknown-user failures
@@ -2072,3 +2077,4 @@ Earlier drafts listed the items below as open. Each one was already answered in 
 - **1.11:** The site is specified to look professional and inviting: a calm layout, warm light colors, and a dark theme. Appearance can be Light, Dark, or Match device, on the public pages and in the username menu, remembered per browser. Printed sheets stay black on white.
 - **1.12:** One Flask process serves pages and the JSON routes. On `192.168.1.26`, gunicorn listens only on `127.0.0.1:8017` and nginx publishes `http://192.168.1.26:8016`. Port 80 and PHP stay with the sites already there. HTTPS in Phase 2 is added to that same nginx site.
 - **1.13:** Ports checked on `192.168.1.26` over SSH. 8080 is used by the `networktraffic` PHP site and 8888 by security cameras. The app now uses nginx on 8016 and gunicorn on 127.0.0.1:8017, both free.
+- **1.14:** Slice 1 build decisions recorded. Failed sign-ins are limited per username (5 per 15 minutes) and per network address (20 per 15 minutes), so a shared household address is not locked out. A stale remembered secret within the 60-second grace window signs in without rotating the cookie again. Added the `rate_events` table and documented the `sid` and framework `session` cookies, the hashed session IDs, and the trusted proxy header.

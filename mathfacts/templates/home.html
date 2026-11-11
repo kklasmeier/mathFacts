@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Welcome, {{ current_account['display_name'] or current_account['username'] }}</h1>
+  <p class="muted">Children, worksheets, and progress will appear here as each part of the app is built.</p>
+</section>
+{% endblock %}

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en" data-theme="{{ theme }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>{% block title %}{% endblock %} · Math Facts</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="{{ url_for('web.index') }}">Math Facts</a>
+    <nav class="menu" aria-label="Main">
+      {% if current_account %}
+        <a href="{{ url_for('web.index') }}">Home</a>
+        <a href="{{ url_for('auth.change_password') }}">Password</a>
+        <form method="post" action="{{ url_for('auth.logout') }}" class="inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="link-button">Sign out</button>
+        </form>
+      {% else %}
+        <a href="{{ url_for('auth.login') }}">Sign in</a>
+        <a href="{{ url_for('auth.register') }}">Create account</a>
+      {% endif %}
+    </nav>
+    <form method="post" action="{{ url_for('auth.appearance') }}" class="theme-picker" aria-label="Appearance">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="next" value="{{ request.full_path.rstrip('?') }}">
+      <button type="submit" name="theme" value="light" class="chip {{ 'chip-on' if theme == 'light' }}">Light</button>
+      <button type="submit" name="theme" value="dark" class="chip {{ 'chip-on' if theme == 'dark' }}">Dark</button>
+      <button type="submit" name="theme" value="auto" class="chip {{ 'chip-on' if theme == 'auto' }}">Auto</button>
+    </form>
+  </div>
+</header>
+
+<main class="wrap">
+  {% for message in get_flashed_messages() %}
+    <div class="notice" role="status">{{ message }}</div>
+  {% endfor %}
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <a href="{{ url_for('auth.terms') }}">Terms and privacy</a>
+  </div>
+</footer>
+</body>
+</html>
