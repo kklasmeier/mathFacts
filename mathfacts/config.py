@@ -13,6 +13,8 @@ DAY = 24 * 60 * 60
 
 
 class Config:
+    # Shown on the administrator status page. Follows the spec revision.
+    APP_VERSION = "1.19"
     # Required outside tests. Set in instance/mathfacts.env on the Pi.
     SECRET_KEY = os.environ.get("SECRET_KEY", "")
 

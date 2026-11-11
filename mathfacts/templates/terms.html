@@ -3,6 +3,9 @@
 {% block content %}
 <section class="card">
   <h1>Terms and privacy</h1>
+  {% if custom %}
+    <div class="terms-text">{{ custom }}</div>
+  {% else %}
   <p class="notice">Draft text. Review before relying on it.</p>
   <h2>Who uses this</h2>
   <p>Math Facts is a private, self-hosted worksheet tool for one family. A parent or legal guardian creates the account and manages any child profiles.</p>
@@ -12,5 +15,6 @@
   <p>Only people with an account on this server. Nothing is sent to outside services.</p>
   <h2>Deleting data</h2>
   <p>An administrator can remove accounts and data. Deletion rules will be added with the administration pages.</p>
+  {% endif %}
 </section>
 {% endblock %}

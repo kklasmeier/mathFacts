@@ -31,3 +31,9 @@ def start_of_day(day):
 
 def format_day(day):
     return f"{day.strftime('%b')} {day.day}"
+
+
+def format_stamp(epoch):
+    """A local date and time, such as 'Nov 10 14:05'."""
+    moment = datetime.datetime.fromtimestamp(epoch)
+    return f"{format_day(moment.date())} {moment.strftime('%H:%M')}"

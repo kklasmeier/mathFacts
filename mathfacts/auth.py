@@ -26,6 +26,16 @@ class DuplicateAccount(Exception):
 
 
 def _cfg(name):
+    """Config value, unless the administrator saved an override for it."""
+    from flask import g
+
+    db = g.get("db")
+    if db is not None:
+        from . import settings
+
+        override = settings.runtime_override(db, name)
+        if override is not None:
+            return override
     return current_app.config[name]
 
 
@@ -97,6 +107,9 @@ def record_event(
     reason=None,
 ):
     """Append one row to the sign-in log. Never pass a password or raw token."""
+    from . import settings
+
+    settings.maybe_purge(db)
     db.execute(
         """
         INSERT INTO login_events (
@@ -188,7 +201,8 @@ def update_password_hash(db, account_id, password_hash):
 
 def set_new_password(db, account_id, password_hash):
     db.execute(
-        "UPDATE accounts SET password_hash = ?, must_change_password = 0 WHERE id = ?",
+        "UPDATE accounts SET password_hash = ?, must_change_password = 0, "
+        "password_reset_expires_at = NULL WHERE id = ?",
         (password_hash, account_id),
     )
 

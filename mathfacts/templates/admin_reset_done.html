@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Password reset{% endblock %}
+{% block content %}
+{% include "_admin_nav.html" %}
+<section class="card">
+  <h1>Password reset for {{ account.username }}</h1>
+  <p>Give them this password. It is shown only on this page. They must choose a new one at the next sign-in.</p>
+  <p class="password-once"><code>{{ password }}</code></p>
+  <p><a class="button" href="{{ url_for('admin.accounts') }}">Back to accounts</a></p>
+</section>
+{% endblock %}

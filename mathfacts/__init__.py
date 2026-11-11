@@ -12,6 +12,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from . import db as database
 from .config import Config
+from .routes_admin import bp as admin_bp
 from .routes_auth import bp as auth_bp
 from .routes_children import bp as children_bp
 from .routes_sheets import bp as sheets_bp
@@ -52,6 +53,7 @@ def create_app(test_config=None):
     app.register_blueprint(auth_bp)
     app.register_blueprint(children_bp)
     app.register_blueprint(sheets_bp)
+    app.register_blueprint(admin_bp)
 
     @app.context_processor
     def inject_common():

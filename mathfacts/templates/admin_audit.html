@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Audit log{% endblock %}
+{% block content %}
+{% include "_admin_nav.html" %}
+<h1>Audit log</h1>
+<form method="get" action="{{ url_for('admin.audit') }}" class="filters card">
+  <div class="filter-grid">
+    <label>From
+      <input type="date" name="date_from" value="{{ filters.date_from }}">
+    </label>
+    <label>To
+      <input type="date" name="date_to" value="{{ filters.date_to }}">
+    </label>
+  </div>
+  <div class="actions">
+    <button type="submit" class="button">Apply</button>
+  </div>
+</form>
+{% if rows %}
+  <ul class="sheet-list">
+    {% for row in rows %}
+      <li class="card sheet-card">
+        <p><strong>{{ labels.get(row.event, row.event) }}</strong> · {{ format_stamp(row.at) }}</p>
+        <p>{{ row.admin_name or 'Pi' }}{% if row.target_name %} · {{ row.target_name }}{% endif %}</p>
+        {% if row.detail %}<p class="muted">{{ row.detail }}</p>{% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p class="muted">No administrator actions match.</p>
+{% endif %}
+{% if pages > 1 %}
+  <p class="pager">
+    {% if previous %}<a href="{{ previous }}">Previous</a>{% endif %}
+    Page {{ page }} of {{ pages }}
+    {% if next_url %}<a href="{{ next_url }}">Next</a>{% endif %}
+  </p>
+{% endif %}
+{% endblock %}

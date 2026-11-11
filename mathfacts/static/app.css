@@ -419,6 +419,7 @@ input:focus {
 .facts dd { margin: 0; }
 
 .detail { display: grid; gap: 1.25rem; }
+.detail-side { display: grid; gap: 1.25rem; align-content: start; }
 
 .danger-zone { border-color: var(--error); }
 .danger-zone .button { background: var(--error); color: #fff; }
@@ -438,6 +439,13 @@ a.chip { text-decoration: none; display: inline-flex; align-items: center; }
 .sheet-links { padding-left: 1.1rem; }
 .sheet-links li { margin: 0.35rem 0; }
 .pager { display: flex; gap: 1rem; align-items: center; }
+.admin-nav { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; margin: 0 0 1rem; }
+.admin-nav a { min-height: 44px; display: inline-flex; align-items: center; color: var(--accent); }
+.password-row { display: flex; gap: 0.5rem; align-items: center; }
+.password-row input { flex: 1; }
+.password-row .button { width: auto; flex: 0 0 auto; }
+.password-once { font-size: 1.2rem; word-break: break-all; }
+.terms-text { white-space: pre-wrap; }
 form.inline { display: inline; }
 
 @media (min-width: 900px) {

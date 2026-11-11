@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Accounts{% endblock %}
+{% block content %}
+{% include "_admin_nav.html" %}
+<h1>Accounts</h1>
+{% if not has_temporary %}
+  <p class="notice">Set a temporary password on <a href="{{ url_for('admin.index') }}">Status</a> before resetting a password.</p>
+{% endif %}
+<ul class="sheet-list">
+  {% for row in rows %}
+    <li class="card sheet-card">
+      <p><strong>{{ row.username }}</strong> · {{ row.email }}</p>
+      <p>
+        {{ row.status|capitalize }}
+        · Created {{ format_day(local_date(row.created_at)) }}
+        · {% if row.last_login_at %}Last sign-in {{ format_stamp(row.last_login_at) }} · {{ login_labels.get(row.last_login_type, row.last_login_type) }}{% else %}No sign-in yet{% endif %}
+      </p>
+      <p class="muted">{{ row.device_count }} device{{ '' if row.device_count == 1 else 's' }} · {{ row.child_count }} child{{ '' if row.child_count == 1 else 'ren' }} · {{ row.sheet_count }} sheet{{ '' if row.sheet_count == 1 else 's' }}</p>
+      <div class="actions">
+        <a class="button secondary" href="{{ url_for('admin.devices', account_id=row.id) }}">Devices</a>
+        {% if row.id != current_account['id'] %}
+          {% if row.status == 'active' %}
+            <form method="post" action="{{ url_for('admin.inactivate', account_id=row.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="button secondary">Inactivate</button>
+            </form>
+          {% else %}
+            <form method="post" action="{{ url_for('admin.reactivate', account_id=row.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="button secondary">Reactivate</button>
+            </form>
+          {% endif %}
+        {% endif %}
+        {% if has_temporary %}
+          <a class="button secondary" href="{{ url_for('admin.reset', account_id=row.id) }}">Reset password</a>
+        {% endif %}
+      </div>
+    </li>
+  {% endfor %}
+</ul>
+{% endblock %}

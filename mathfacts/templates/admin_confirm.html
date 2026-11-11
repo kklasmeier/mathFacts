@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+{% include "_admin_nav.html" %}
+<section class="card">
+  <h1>{{ title }}</h1>
+  <p>{{ body }}</p>
+  <form method="post" action="{{ action }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="confirm" value="yes">
+    <div class="actions">
+      <button type="submit" class="button">{{ label }}</button>
+      <a class="button secondary" href="{{ url_for('admin.accounts') }}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

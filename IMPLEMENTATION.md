@@ -1,6 +1,6 @@
 # Implementation plan
 
-**Spec:** [Requirements/math-worksheet-spec.md](Requirements/math-worksheet-spec.md) version 1.18
+**Spec:** [Requirements/math-worksheet-spec.md](Requirements/math-worksheet-spec.md) version 1.19
 **Code:** this folder (`/home/pi/Programming/mathFacts`)
 **Run:** `http://192.168.1.26:8016` from `/home/pi/mathFacts` on the Pi
 
@@ -123,7 +123,7 @@ Tests: reprint identity, regenerate rules, delete of an issued sheet, rating req
 
 ### 4 — Administration
 
-Accounts list (counts only, no child names), inactivate, reactivate, reset password, sign-in log, audit log, site settings.
+Accounts list (counts only, no child names), inactivate, reactivate, reset password, sign-in log, audit log, site settings. The plan library waits for slice 5. `python -m mathfacts.reset_password USERNAME` resets an account from the Pi.
 
 Tests: inactive account cannot sign in, reset forces a new password, admin cannot open another family's sheet, admin cannot inactivate their own account.
 

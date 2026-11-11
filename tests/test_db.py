@@ -17,6 +17,8 @@ TABLES = {
     "worksheet_problems",
     "ratings",
     "account_settings",
+    "app_settings",
+    "audit_log",
 }
 
 

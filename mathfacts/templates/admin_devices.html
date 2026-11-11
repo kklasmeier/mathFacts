@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Devices for {{ account.username }}{% endblock %}
+{% block content %}
+{% include "_admin_nav.html" %}
+<h1>Devices for {{ account.username }}</h1>
+{% if devices %}
+  <ul class="sheet-list">
+    {% for device in devices %}
+      <li class="card sheet-card">
+        <p>{{ device.label or 'Remembered sign-in' }} · {{ device.user_agent_summary or 'Unknown browser' }}</p>
+        <p class="muted">{{ device.last_ip or 'No address' }} · {% if device.last_used_at %}{{ format_stamp(device.last_used_at) }}{% else %}Not used yet{% endif %}</p>
+        <p class="muted">Device {{ device.device_id }}</p>
+        {% if device.revoked_at %}
+          <p>Revoked</p>
+        {% else %}
+          <form method="post" action="{{ url_for('admin.revoke', account_id=account.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="remembered_id" value="{{ device.id }}">
+            <button type="submit" class="button secondary">Revoke</button>
+          </form>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p class="muted">No remembered sign-ins.</p>
+{% endif %}
+{% endblock %}

@@ -176,6 +176,27 @@ MIGRATIONS = {
         )
         """,
     ],
+    # Slice 4: site settings and the administrator audit log. The sign-in log
+    # already exists. The temporary password is stored encrypted, not hashed.
+    5: [
+        """
+        CREATE TABLE app_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )
+        """,
+        """
+        CREATE TABLE audit_log (
+            id INTEGER PRIMARY KEY,
+            at INTEGER NOT NULL,
+            admin_account_id INTEGER REFERENCES accounts(id) ON DELETE SET NULL,
+            event TEXT NOT NULL,
+            target_account_id INTEGER REFERENCES accounts(id) ON DELETE SET NULL,
+            detail TEXT
+        )
+        """,
+        "CREATE INDEX audit_log_at ON audit_log(at)",
+    ],
 }
 
 SCHEMA_VERSION = max(MIGRATIONS)

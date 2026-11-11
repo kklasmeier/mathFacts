@@ -20,6 +20,9 @@
         <a href="{{ url_for('children.index') }}">Children</a>
         <a href="{{ url_for('sheets.index') }}">Sheets</a>
         <a href="{{ url_for('sheets.new_sheet') }}">New sheet</a>
+        {% if current_account['role'] == 'admin' %}
+          <a href="{{ url_for('admin.index') }}">Admin</a>
+        {% endif %}
         <a href="{{ url_for('auth.account') }}">{{ current_account['display_name'] or current_account['username'] }}</a>
         <a href="{{ url_for('auth.change_password') }}">Password</a>
         <form method="post" action="{{ url_for('auth.logout') }}" class="inline">

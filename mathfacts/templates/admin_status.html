@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Admin{% endblock %}
+{% block content %}
+{% include "_admin_nav.html" %}
+<h1>Status</h1>
+<section class="card">
+  <p>Database {{ status.size }}{% if status.backup %} · Last backup {{ status.backup }}{% else %} · No backup recorded on this Pi{% endif %} · Version {{ status.version }}</p>
+  <p>{{ status.accounts }} account{{ '' if status.accounts == 1 else 's' }}. Back up the database from the Pi.</p>
+</section>
+
+<h2>Site settings</h2>
+<form class="card" method="post" action="{{ url_for('admin.index') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label>Terms and privacy
+    <textarea name="terms_text" rows="8">{{ values.terms_text }}</textarea>
+    {% if errors.terms_text %}<span class="error">{{ errors.terms_text }}</span>{% endif %}
+  </label>
+  <div class="filter-grid">
+    <label>Max children per account
+      <input type="number" name="max_children" min="1" max="100" value="{{ values.max_children }}" required>
+      {% if errors.max_children %}<span class="error">{{ errors.max_children }}</span>{% endif %}
+    </label>
+    <label>Sign-in log kept for (days)
+      <input type="number" name="login_log_days" min="1" max="3650" value="{{ values.login_log_days }}" required>
+      {% if errors.login_log_days %}<span class="error">{{ errors.login_log_days }}</span>{% endif %}
+    </label>
+    <label>Sign-in idle timeout (hours)
+      <input type="number" name="idle_hours" min="1" max="168" value="{{ values.idle_hours }}" required>
+      {% if errors.idle_hours %}<span class="error">{{ errors.idle_hours }}</span>{% endif %}
+    </label>
+    <label>Stay signed in for (days)
+      <input type="number" name="remember_days" min="1" max="3650" value="{{ values.remember_days }}" required>
+      {% if errors.remember_days %}<span class="error">{{ errors.remember_days }}</span>{% endif %}
+    </label>
+    <label>Temporary password works for (hours)
+      <input type="number" name="reset_hours" min="1" max="720" value="{{ values.reset_hours }}" required>
+      {% if errors.reset_hours %}<span class="error">{{ errors.reset_hours }}</span>{% endif %}
+    </label>
+  </div>
+  <label>Temporary password
+    <span class="password-row">
+      <input id="temporary-password" type="password" name="temporary_password" value="{{ values.temporary_password }}" autocomplete="new-password">
+      <button type="button" class="button secondary" data-show-password="temporary-password">Show</button>
+    </span>
+    {% if errors.temporary_password %}<span class="error">{{ errors.temporary_password }}</span>{% endif %}
+  </label>
+  <p class="hint">The temporary password is shared. It is only safe because the person must choose a new one at the next sign-in. Leave the field as it is to keep the current one. It is not written to the audit log.</p>
+  <div class="actions">
+    <button type="submit" class="button">Save</button>
+  </div>
+</form>
+{% endblock %}

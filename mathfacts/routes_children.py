@@ -2,7 +2,7 @@
 
 from flask import Blueprint, abort, flash, g, redirect, render_template, request, url_for
 
-from . import children
+from . import children, settings
 from .sessions import get_db
 
 bp = Blueprint("children", __name__)
@@ -24,7 +24,7 @@ def index():
         active=children.list_children(db, account_id),
         archived=children.list_children(db, account_id, archived=True),
         total=children.count_children(db, account_id),
-        limit=children.MAX_CHILDREN,
+        limit=settings.max_children(db),
     )
 
 
@@ -32,8 +32,9 @@ def index():
 def new():
     db = get_db()
     account_id = g.account["id"]
-    if children.count_children(db, account_id) >= children.MAX_CHILDREN:
-        flash(f"You can have up to {children.MAX_CHILDREN} children on one account.")
+    limit = settings.max_children(db)
+    if children.count_children(db, account_id) >= limit:
+        flash(f"You can have up to {limit} children on one account.")
         return redirect(url_for("children.index"))
 
     if request.method == "GET":

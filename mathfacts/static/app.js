@@ -112,6 +112,20 @@
     sync();
   }
 
+  function initShowPassword() {
+    document.querySelectorAll("[data-show-password]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        var input = document.getElementById(button.getAttribute("data-show-password"));
+        if (!input) {
+          return;
+        }
+        var showing = input.type === "text";
+        input.type = showing ? "password" : "text";
+        button.textContent = showing ? "Show" : "Hide";
+      });
+    });
+  }
+
   function initPrintButtons() {
     document.querySelectorAll("[data-print]").forEach(function (button) {
       button.addEventListener("click", function () {
@@ -124,6 +138,7 @@
     scaleSheets(document);
     initBuilder();
     initAidField();
+    initShowPassword();
     initPrintButtons();
     window.addEventListener("resize", function () {
       scaleSheets(document);

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Reset password{% endblock %}
+{% block content %}
+{% include "_admin_nav.html" %}
+<section class="card">
+  <h1>Reset password for {{ account.username }}</h1>
+  <p>Their current sessions and remembered sign-ins stop. At the next sign-in they must choose a new password.</p>
+  <form method="post" action="{{ url_for('admin.reset', account_id=account.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <fieldset>
+      <legend>Which password</legend>
+      <div class="choices">
+        <label class="choice"><input type="radio" name="choice" value="site" {% if use_site %}checked{% endif %}> <span>Use the site temporary password</span></label>
+        <label class="choice"><input type="radio" name="choice" value="once" {% if not use_site %}checked{% endif %}> <span>Type a single-use password for this reset</span></label>
+      </div>
+    </fieldset>
+    <label>Single-use password
+      <input type="password" name="once_password" autocomplete="new-password">
+      {% if errors.once_password %}<span class="error">{{ errors.once_password }}</span>{% endif %}
+    </label>
+    <div class="actions">
+      <button type="submit" class="button">Reset password</button>
+      <a class="button secondary" href="{{ url_for('admin.accounts') }}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

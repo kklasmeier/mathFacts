@@ -12,7 +12,7 @@ from flask import (
     url_for,
 )
 
-from . import auth, security
+from . import auth, clock, security, settings
 from .sessions import cookie_options, get_db, queue_cookie, queue_delete
 
 bp = Blueprint("auth", __name__)
@@ -23,6 +23,9 @@ THEMES = ("light", "dark", "auto")
 GENERIC_SIGNIN_ERROR = "That username or password is not right."
 LOCKED_ERROR = "Sign-in is paused after several failed attempts. Try again in about 15 minutes."
 INACTIVE_ERROR = "This account is inactive. Contact your administrator."
+EXPIRED_RESET = (
+    "This temporary password has expired. Ask the administrator to reset it again."
+)
 REGISTER_LIMIT_ERROR = "Too many sign-up attempts from this network. Try again later."
 
 
@@ -180,6 +183,16 @@ def login():
             next_url=next_url,
         ), 401
 
+    expires = account["password_reset_expires_at"]
+    if account["must_change_password"] and expires is not None and expires <= clock.now():
+        auth.record_event(
+            db, "failed_login", False, account_id=account["id"], identifier=identifier,
+            device_id=g.device_id, ip=ip, ua=ua, reason="temporary password expired",
+        )
+        return render_template(
+            "login.html", errors={"form": EXPIRED_RESET}, values=values, next_url=next_url
+        ), 403
+
     if account["status"] != "active":
         auth.record_event(
             db, "failed_login", False, account_id=account["id"], identifier=identifier,
@@ -220,7 +233,7 @@ def forgot_password():
 
 @bp.route("/terms")
 def terms():
-    return render_template("terms.html")
+    return render_template("terms.html", custom=settings.terms_text(get_db()))
 
 
 @bp.post("/appearance")
