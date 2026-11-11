@@ -1,0 +1,16 @@
+[Unit]
+Description=Math Facts worksheet site
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/mathFacts
+EnvironmentFile=/home/pi/mathFacts/instance/mathfacts.env
+ExecStart=/home/pi/mathFacts/.venv/bin/gunicorn --workers 2 --bind 127.0.0.1:8017 --access-logfile - wsgi:app
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
