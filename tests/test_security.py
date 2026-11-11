@@ -39,6 +39,13 @@ def test_corrupt_hash_does_not_raise(app):
         assert security.verify_password("not-a-hash", "anything") == (False, False)
 
 
+def test_name_rules():
+    assert security.name_problem("Kevin") is None
+    assert security.name_problem("Mary Ann") is None
+    assert security.name_problem("") is not None
+    assert security.name_problem("x" * 61) is not None
+
+
 def test_email_and_username_rules():
     assert security.valid_email("kim@example.com")
     assert not security.valid_email("kim@@example")

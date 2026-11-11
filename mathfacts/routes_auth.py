@@ -67,6 +67,7 @@ def register():
         )
 
     values = {
+        "name": request.form.get("name", "").strip(),
         "email": request.form.get("email", "").strip(),
         "username": request.form.get("username", "").strip(),
     }
@@ -87,6 +88,9 @@ def register():
         ), 400
 
     errors = {}
+    name_error = security.name_problem(values["name"])
+    if name_error:
+        errors["name"] = name_error
     if not security.valid_email(values["email"]):
         errors["email"] = "Enter a valid email address."
     if not security.valid_username(values["username"]):
@@ -109,7 +113,8 @@ def register():
 
     try:
         account_id, _role = auth.register_account(
-            db, values["email"], values["username"], security.hash_password(password)
+            db, values["email"], values["username"], security.hash_password(password),
+            values["name"],
         )
     except auth.DuplicateAccount as duplicate:
         if duplicate.field == "email":
@@ -231,6 +236,28 @@ def appearance():
 
 
 # --- Signed-in pages --------------------------------------------------------
+
+
+@bp.route("/account", methods=["GET", "POST"])
+def account():
+    current = g.account
+    if request.method == "GET":
+        return render_template(
+            "account.html",
+            values={"name": current["display_name"] or ""},
+            errors={},
+        )
+
+    name = request.form.get("name", "").strip()
+    problem = security.name_problem(name)
+    if problem:
+        return render_template(
+            "account.html", values={"name": name}, errors={"name": problem}
+        ), 400
+
+    auth.update_display_name(get_db(), current["id"], name)
+    flash("Your name has been saved.")
+    return redirect(url_for("web.index"))
 
 
 @bp.route("/welcome")

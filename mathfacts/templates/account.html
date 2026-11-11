@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Profile{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <h1>Profile</h1>
+  <p class="muted">This name is shown on Home and in the header. Your username stays <strong>{{ current_account['username'] }}</strong> and is what you type to sign in.</p>
+  <form method="post" action="{{ url_for('auth.account') }}" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Name
+      <input name="name" value="{{ values.name }}" autocomplete="name" maxlength="60" required autofocus>
+      {% if errors.name %}<span class="error">{{ errors.name }}</span>{% endif %}
+    </label>
+    <button type="submit" class="button">Save name</button>
+  </form>
+</section>
+{% endblock %}

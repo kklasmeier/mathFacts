@@ -143,7 +143,7 @@ def find_account(db, identifier):
     ).fetchone()
 
 
-def register_account(db, email, username, password_hash):
+def register_account(db, email, username, password_hash, display_name):
     """Create an account. The first account becomes the Administrator.
 
     Uses BEGIN IMMEDIATE so two simultaneous first registrations cannot both
@@ -163,15 +163,21 @@ def register_account(db, email, username, password_hash):
             raise DuplicateAccount("username")
         role = "admin" if account_count(db) == 0 else "parent"
         cursor = db.execute(
-            "INSERT INTO accounts (email, username, password_hash, role, created_at) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (email, username, password_hash, role, clock.now()),
+            "INSERT INTO accounts (email, username, display_name, password_hash, role, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (email, username, display_name, password_hash, role, clock.now()),
         )
         db.execute("COMMIT")
     except BaseException:
         db.execute("ROLLBACK")
         raise
     return cursor.lastrowid, role
+
+
+def update_display_name(db, account_id, display_name):
+    db.execute(
+        "UPDATE accounts SET display_name = ? WHERE id = ?", (display_name, account_id)
+    )
 
 
 def update_password_hash(db, account_id, password_hash):

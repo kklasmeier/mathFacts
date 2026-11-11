@@ -52,9 +52,12 @@ def test_registration_rejects_bad_input_and_creates_nothing(app, client, db):
         # Password may not repeat the username.
         {"username": "longusername1", "password": "longusername1", "confirm": "longusername1"},
         {"confirm": "something else entirely"},
+        {"name": ""},
+        {"name": "x" * 61},
     ]
     for overrides in cases:
         data = {
+            "name": "Kim",
             "email": "kim@example.com",
             "username": "kim",
             "password": PASSWORD,
@@ -97,6 +100,14 @@ def test_registration_attempts_are_rate_limited(client):
     for _ in range(5):
         client.post("/register", data={})
     assert client.post("/register", data={}).status_code == 429
+
+
+def test_registration_stores_the_name_shown_on_home(client, register, db):
+    register(name="Kevin")
+    stored = db.execute("SELECT display_name, username FROM accounts").fetchone()
+    assert stored["display_name"] == "Kevin"
+    assert stored["username"] == "kim"
+    assert b"Welcome, Kevin" in client.get("/").data
 
 
 def test_password_is_stored_as_argon2id_hash(client, register, db):
@@ -443,6 +454,31 @@ def test_old_password_stops_working_after_change(client, register, new_client):
     assert new_client().post(
         "/login", data={"identifier": "kim", "password": NEW_PASSWORD}
     ).status_code == 302
+
+
+# --- Profile ----------------------------------------------------------------
+
+
+def test_profile_updates_the_name_shown_on_home(client, register):
+    register(name="Kim")
+    response = client.post("/account", data={"name": "Kevin"})
+    assert response.status_code == 302
+    assert response.headers["Location"] == "/"
+    home = client.get("/")
+    assert b"Welcome, Kevin" in home.data
+    assert b">Kevin<" in home.data
+
+
+def test_profile_rejects_a_blank_name(client, register, db):
+    register(name="Kim")
+    response = client.post("/account", data={"name": "   "})
+    assert response.status_code == 400
+    stored = db.execute("SELECT display_name FROM accounts").fetchone()[0]
+    assert stored == "Kim"
+
+
+def test_profile_requires_sign_in(client):
+    assert client.get("/account").status_code == 302
 
 
 # --- Appearance -------------------------------------------------------------

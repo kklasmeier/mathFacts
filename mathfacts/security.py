@@ -12,6 +12,7 @@ from flask import current_app
 
 MIN_PASSWORD = 10
 MAX_PASSWORD = 128
+MAX_NAME = 60
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_.-]{3,30}$")
@@ -87,3 +88,15 @@ def valid_email(value: str) -> bool:
 
 def valid_username(value: str) -> bool:
     return bool(USERNAME_RE.match(value))
+
+
+def name_problem(value: str):
+    """Return an error message, or None when the name is usable.
+
+    The name is what the app shows. The username stays the sign-in name.
+    """
+    if not value or any(ord(ch) < 32 for ch in value):
+        return "Enter your name."
+    if len(value) > MAX_NAME:
+        return f"Use {MAX_NAME} characters or fewer."
+    return None

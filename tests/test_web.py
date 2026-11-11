@@ -18,7 +18,7 @@ def test_home_redirects_to_sign_in_when_signed_out(client):
 def test_home_shows_name_when_signed_in(signed_in_client):
     response = signed_in_client.get("/")
     assert response.status_code == 200
-    assert b"Welcome, kim" in response.data
+    assert b"Welcome, Kim" in response.data
 
 
 def test_security_headers_present(client):

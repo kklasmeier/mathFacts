@@ -14,6 +14,7 @@
     <nav class="menu" aria-label="Main">
       {% if current_account %}
         <a href="{{ url_for('web.index') }}">Home</a>
+        <a href="{{ url_for('auth.account') }}">{{ current_account['display_name'] or current_account['username'] }}</a>
         <a href="{{ url_for('auth.change_password') }}">Password</a>
         <form method="post" action="{{ url_for('auth.logout') }}" class="inline">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

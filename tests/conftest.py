@@ -78,12 +78,14 @@ def register(client):
     def _register(
         email="kim@example.com",
         username="kim",
+        name="Kim",
         password=PASSWORD,
         guardian="yes",
         test_client=None,
     ):
         target = test_client or client
         data = {
+            "name": name,
             "email": email,
             "username": username,
             "password": password,

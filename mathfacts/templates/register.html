@@ -12,6 +12,12 @@
   <form method="post" action="{{ url_for('auth.register') }}" novalidate>
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
+    <label>Name
+      <input name="name" value="{{ values.name or '' }}" autocomplete="name" maxlength="60" required autofocus>
+      <span class="hint">This is the name shown in the app. Your username is only for signing in.</span>
+      {% if errors.name %}<span class="error">{{ errors.name }}</span>{% endif %}
+    </label>
+
     <label>Email
       <input name="email" type="email" value="{{ values.email or '' }}" autocomplete="email" required>
       {% if errors.email %}<span class="error">{{ errors.email }}</span>{% endif %}

@@ -1,6 +1,6 @@
 # Math Facts Worksheet Generator — Product Spec
 
-**Version:** 1.14 (draft)
+**Version:** 1.15 (draft)
 **Owner:** Kevin
 **Target platform:** Raspberry Pi (web app on the home network first; external hosting with HTTPS is Phase 2)
 **Primary language:** Python
@@ -520,8 +520,9 @@ Registration is **open to anyone who can reach the site**. There are no invite c
 **Fields**
 | Field | Rules |
 |---|---|
+| **Name** | Required, 1–60 characters. The name shown on Home and in the header. Not used to sign in. |
 | **Email address** | Required, valid format, unique (case-insensitive). Not verified in the first release (no email service); used as a sign-in name and for the Administrator to identify the account. |
-| **Username** | Required, 3–30 characters, letters/numbers/underscore/dash/period, unique (case-insensitive). Shown in the app's header. |
+| **Username** | Required, 3–30 characters, letters/numbers/underscore/dash/period, unique (case-insensitive). Used to sign in. |
 | **Password** | Required. Minimum **10 characters**, no maximum under 128; no forced symbol/case rules; a strength hint is shown; rejected if it appears in a bundled list of common passwords or equals the username/email. Passphrases are encouraged. |
 | **Confirm password** | Must match. |
 | **"I am a parent or legal guardian, and I agree to the Terms and Privacy notice."** | Required checkbox. Registration is for adults only. |
@@ -877,7 +878,7 @@ The signed-in app has three bars. Account pages (Account, Settings, Templates, P
 | Sheets | `/worksheets` | Filtered to the current child. The Child filter can switch to All. |
 | New sheet | `/builder` | Current child is pre-selected. |
 | Child menu | switch child, or `/children` | Lists active children, then "Manage children". |
-| Username menu | see below | The label is the username. |
+| Username menu | see below | The label is the person's name. |
 
 **Username menu**
 
@@ -990,6 +991,8 @@ Creates an account and signs the person in. When no accounts exist, the title is
 +--------------------------------------------------+
 | Create an account                                |
 |                                                  |
+| Name                                             |
+| [ Kevin                                    ]     |
 | Email                                            |
 | [ you@example.com                          ]     |
 | Username                                         |
@@ -1009,8 +1012,9 @@ Creates an account and signs the person in. When no accounts exist, the title is
 
 | Control | Kind | Behavior |
 |---|---|---|
+| Name | text | Required, 1–60 characters. Shown on Home and in the header. |
 | Email | text | Required, valid format, unique ignoring case. |
-| Username | text | Required, 3–30 characters, letters, numbers, underscore, dash, period. Unique ignoring case. Shown later in the header. |
+| Username | text | Required, 3–30 characters, letters, numbers, underscore, dash, period. Unique ignoring case. Used to sign in. |
 | Password | password | Required, at least 10 characters, no maximum under 128. Rejected when it is on the common-password list or equals the username or email. Show / Hide toggles visibility. The hint under the field reflects length only. There are no symbol or case rules. |
 | Confirm password | password | Must match. Show / Hide. |
 | Guardian checkbox | checkbox | Required. "Terms and Privacy notice" links to `/terms`. |
@@ -1719,7 +1723,7 @@ Badge catalog edits and the badge-shelf default are Phase 3 and are not on this 
 
 | Control | Kind | Behavior |
 |---|---|---|
-| Username, Email, Display name | text | Display name is optional. Saving a new email asks for the current password in the same form. Username follows the registration rules. |
+| Username, Email, Display name | text | Display name is required, 1–60 characters, and is the name shown on Home and in the header. It is collected at registration and edited here. Saving a new email asks for the current password in the same form. Username follows the registration rules and stays the sign-in name. |
 | Save profile | button | Saves profile fields. |
 | Change password | link | Opens Change password in self-service mode. |
 | Rename | button | Turns that device's label into a text field and shows Save. |
@@ -2078,3 +2082,4 @@ Earlier drafts listed the items below as open. Each one was already answered in 
 - **1.12:** One Flask process serves pages and the JSON routes. On `192.168.1.26`, gunicorn listens only on `127.0.0.1:8017` and nginx publishes `http://192.168.1.26:8016`. Port 80 and PHP stay with the sites already there. HTTPS in Phase 2 is added to that same nginx site.
 - **1.13:** Ports checked on `192.168.1.26` over SSH. 8080 is used by the `networktraffic` PHP site and 8888 by security cameras. The app now uses nginx on 8016 and gunicorn on 127.0.0.1:8017, both free.
 - **1.14:** Slice 1 build decisions recorded. Failed sign-ins are limited per username (5 per 15 minutes) and per network address (20 per 15 minutes), so a shared household address is not locked out. A stale remembered secret within the 60-second grace window signs in without rotating the cookie again. Added the `rate_events` table and documented the `sid` and framework `session` cookies, the hashed session IDs, and the trusted proxy header.
+- **1.15:** Registration collects a name, stored as `display_name`. Home and the header show that name. The username stays the sign-in name. The name can be changed on the Account page.
