@@ -1,6 +1,6 @@
 # Math Facts Worksheet Generator — Product Spec
 
-**Version:** 1.15 (draft)
+**Version:** 1.18 (draft)
 **Owner:** Kevin
 **Target platform:** Raspberry Pi (web app on the home network first; external hosting with HTTPS is Phase 2)
 **Primary language:** Python
@@ -2085,3 +2085,4 @@ Earlier drafts listed the items below as open. Each one was already answered in 
 - **1.15:** Registration collects a name, stored as `display_name`. Home and the header show that name. The username stays the sign-in name. The name can be changed on the Account page.
 - **1.16:** Slice 2 build decisions. The preview and the saved sheet come from one function with a seed, so a saved sheet prints the same problems the parent approved. "Sequential" order keeps the A-then-B cycle, and Regenerate does not change it when nothing clashes. If a page of repeats cannot be separated by swaps, the builder rebuilds the same facts greedily. Random order with repeats uses an even spread when the facts are fewer than the spaces. This revision held a size under 10pt at 10pt with reduced writing space. 1.17 removes that hold. Each saved sheet records its font size, cell size, legibility, tight, and fit flags. Sheets are numbered per account, and the number appears in the footer.
 - **1.17:** The font may go under 10pt. A dense page uses the fitted size instead of being held at 10pt. The builder remembers the last problem layout, page direction, across, down, and order for the account, and uses them as the defaults on the next new sheet. Printed sheets keep a tight 0.3in page margin plus a small inset so the problems are not flush with the edge. The vertical rule runs under the operator. The long-division bracket is one connected mark.
+- **1.18:** Slice 3 history and ratings. The sheet list filters by child, operation, status, date, support, and title or number. The stage filter stays hidden until plans exist. Clean up unfinished lists issued sheets at least 14 days old and deletes the checked ones after confirmation. Regenerate and Change and regenerate update an issued sheet in place. A finished sheet keeps its problems; Duplicate makes a new number. Rating requires performance and support, then marks the sheet completed. The advancement rule (2 of the last 3, aids count) is in the rating code. The ready banner, next-sheet buttons, badges, and the cleanup-age setting wait for later slices. Home shows the current child's unfinished count and five newest sheets.

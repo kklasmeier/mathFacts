@@ -18,6 +18,7 @@
       {% if current_account %}
         <a href="{{ url_for('web.index') }}">Home</a>
         <a href="{{ url_for('children.index') }}">Children</a>
+        <a href="{{ url_for('sheets.index') }}">Sheets</a>
         <a href="{{ url_for('sheets.new_sheet') }}">New sheet</a>
         <a href="{{ url_for('auth.account') }}">{{ current_account['display_name'] or current_account['username'] }}</a>
         <a href="{{ url_for('auth.change_password') }}">Password</a>

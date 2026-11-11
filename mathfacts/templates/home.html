@@ -3,10 +3,48 @@
 {% block content %}
 <section class="card">
   <h1>Welcome, {{ current_account['display_name'] or current_account['username'] }}</h1>
-  <p class="muted">Make a worksheet, or add and manage the children it is for. Progress will show here later.</p>
-  <div class="actions">
-    <a class="button" href="{{ url_for('sheets.new_sheet') }}">New sheet</a>
-    <a class="button secondary" href="{{ url_for('children.index') }}">Children</a>
-  </div>
+  {% if not kids %}
+    <p>Add a child, then you can make sheets for them.</p>
+    <div class="actions">
+      <a class="button" href="{{ url_for('children.new') }}">Add a child</a>
+    </div>
+  {% else %}
+    {% if kids|length > 1 %}
+      <div class="chips" aria-label="Children">
+        {% for k in kids %}
+          <a class="chip {{ 'chip-on' if k.id == child.id }}" href="{{ url_for('web.index', child=k.id) }}">{{ k.name }}</a>
+        {% endfor %}
+      </div>
+    {% endif %}
+    <p>
+      {% if unfinished == 1 %}
+        <a href="{{ url_for('sheets.index', child=child.id, status='issued') }}">1 unfinished sheet</a> for {{ child.name }}.
+      {% elif unfinished %}
+        <a href="{{ url_for('sheets.index', child=child.id, status='issued') }}">{{ unfinished }} unfinished sheets</a> for {{ child.name }}.
+      {% else %}
+        No unfinished sheets for {{ child.name }}.
+      {% endif %}
+    </p>
+    <h2>Recent sheets</h2>
+    {% if recent %}
+      <ul class="sheet-links">
+        {% for row in recent %}
+          <li>
+            <a href="{{ url_for('sheets.detail', sheet_id=row.id) }}">
+              #{{ '%04d' % row.number }} · {{ row.title }}
+              · {% if row.status == 'completed' %}{{ performance_label(row.performance) }} · {{ support_label(row.support) }}{% else %}Issued{% endif %}
+              · {% if row.completed_at %}{{ format_day(parse_date(row.completed_at)) }}{% else %}{{ format_day(local_date(row.created_at)) }}{% endif %}
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">No sheets yet for {{ child.name }}.</p>
+    {% endif %}
+    <div class="actions">
+      <a class="button" href="{{ url_for('sheets.new_sheet', child=child.id) }}">New sheet</a>
+      <a class="button secondary" href="{{ url_for('sheets.index', child=child.id) }}">Sheets</a>
+    </div>
+  {% endif %}
 </section>
 {% endblock %}

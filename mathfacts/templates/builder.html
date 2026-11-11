@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% from "_sheet.html" import sheet_view %}
-{% block title %}New sheet{% endblock %}
+{% block title %}{% if replace %}Change sheet #{{ '%04d' % number }}{% else %}New sheet{% endif %}{% endblock %}
 {% block content %}
-<h1>New sheet</h1>
+<h1>{% if replace %}Change sheet #{{ '%04d' % number }}{% else %}New sheet{% endif %}</h1>
 {% if errors %}
   <p class="error" role="alert">Fix the fields marked below, then try again.</p>
 {% endif %}
@@ -13,6 +13,7 @@
       data-preview-url="{{ url_for('sheets.preview') }}" novalidate>
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="seed" value="{{ v.seed }}">
+  <input type="hidden" name="replace" value="{{ replace }}">
   {# First submit button in the form. Pressing Enter in a text field uses it, and it must not save. #}
   <button type="submit" name="action" value="refresh" class="sr-only" tabindex="-1" aria-hidden="true">Refresh preview</button>
 
@@ -112,8 +113,13 @@
   </fieldset>
 
   <div class="actions">
-    <button type="submit" name="action" value="print" class="button">Generate and print</button>
-    <button type="submit" name="action" value="save" class="button secondary">Save without printing</button>
+    {% if replace %}
+      <button type="submit" name="action" value="print" class="button">Replace and print</button>
+      <button type="submit" name="action" value="save" class="button secondary">Save replacement</button>
+    {% else %}
+      <button type="submit" name="action" value="print" class="button">Generate and print</button>
+      <button type="submit" name="action" value="save" class="button secondary">Save without printing</button>
+    {% endif %}
     <button type="submit" name="action" value="regenerate" class="button secondary">Regenerate</button>
   </div>
 </form>

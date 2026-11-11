@@ -187,3 +187,131 @@ def test_new_sheet_remembers_layout_but_not_the_facts(signed_in_client, db):
     # The fact set goes back to the defaults. Only the layout is remembered.
     assert 'name="a_spec" value="1-9"' in page
     assert 'name="b_spec" value="2"' in page
+
+
+def _save(client, child_id, **overrides):
+    response = client.post(
+        "/builder", data={**sheet_values(child_id, **overrides), "action": "save"}
+    )
+    assert response.status_code == 302
+    return int(response.headers["Location"].rsplit("/", 1)[1])
+
+
+def test_reprint_shows_the_saved_problems(signed_in_client, db):
+    cid = make_child(signed_in_client, db)
+    sheet_id = _save(signed_in_client, cid, seed="4242", order="random")
+    first = signed_in_client.get(f"/worksheets/{sheet_id}/print").get_data(as_text=True)
+    second = signed_in_client.get(f"/worksheets/{sheet_id}/print").get_data(as_text=True)
+    assert horizontal_cells(first) == horizontal_cells(second)
+    assert saved_problems(db, sheet_id) == [
+        (p.op, p.a, p.b)
+        for p in builder.build_sheet(builder.parse(sheet_values(cid, seed="4242", order="random"), {cid})[0]).problems
+    ]
+
+
+def test_regenerate_on_an_issued_sheet_keeps_the_number(signed_in_client, db, monkeypatch):
+    cid = make_child(signed_in_client, db)
+    sheet_id = _save(signed_in_client, cid, seed="1", order="random")
+    before = saved_problems(db, sheet_id)
+    monkeypatch.setattr(builder, "new_seed", lambda: 999)
+
+    response = signed_in_client.post(f"/worksheets/{sheet_id}/regenerate")
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(f"/worksheets/{sheet_id}/print")
+
+    row = db.execute(
+        "SELECT number, revision, seed, status FROM worksheets WHERE id = ?", (sheet_id,)
+    ).fetchone()
+    assert (row["number"], row["revision"], row["seed"], row["status"]) == (1, 1, 999, "issued")
+    assert saved_problems(db, sheet_id) != before
+    assert db.execute("SELECT next_sheet_number FROM accounts").fetchone()[0] == 2
+
+
+def test_regenerate_on_a_completed_sheet_is_refused(signed_in_client, db):
+    cid = make_child(signed_in_client, db)
+    sheet_id = _save(signed_in_client, cid, seed="1", order="random")
+    signed_in_client.post(
+        f"/worksheets/{sheet_id}/rate",
+        data={"performance": "3", "support": "3", "completed_on": "2026-11-10"},
+    )
+    before = saved_problems(db, sheet_id)
+
+    response = signed_in_client.post(f"/worksheets/{sheet_id}/regenerate")
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(f"/worksheets/{sheet_id}")
+    page = signed_in_client.get(f"/worksheets/{sheet_id}").get_data(as_text=True)
+    assert "its problems stay as they were" in page
+    assert saved_problems(db, sheet_id) == before
+    assert db.execute("SELECT revision FROM worksheets WHERE id = ?", (sheet_id,)).fetchone()[0] == 0
+
+
+def test_change_and_regenerate_replaces_the_same_sheet(signed_in_client, db):
+    cid = make_child(signed_in_client, db)
+    sheet_id = _save(signed_in_client, cid, seed="50", cols="5")
+    page = signed_in_client.get(f"/builder?replace={sheet_id}").get_data(as_text=True)
+    assert "Replace and print" in page
+    assert 'name="seed" value="50"' in page
+    assert 'name="replace" value="' + str(sheet_id) + '"' in page
+
+    response = signed_in_client.post(
+        "/builder",
+        data={**sheet_values(cid, seed="50", cols="3"), "replace": str(sheet_id), "action": "save"},
+    )
+    assert response.headers["Location"].endswith(f"/worksheets/{sheet_id}")
+    row = db.execute("SELECT number, cols, revision FROM worksheets WHERE id = ?", (sheet_id,)).fetchone()
+    assert (row["number"], row["cols"], row["revision"]) == (1, 3, 1)
+    assert db.execute("SELECT COUNT(*) FROM worksheets").fetchone()[0] == 1
+
+
+def test_duplicate_takes_the_next_number(signed_in_client, db, monkeypatch):
+    cid = make_child(signed_in_client, db)
+    sheet_id = _save(signed_in_client, cid, seed="1", order="random")
+    monkeypatch.setattr(builder, "new_seed", lambda: 777)
+    response = signed_in_client.post(f"/worksheets/{sheet_id}/duplicate")
+    assert response.status_code == 302
+    new_id = int(response.headers["Location"].split("/worksheets/")[1].split("/")[0])
+    assert new_id != sheet_id
+    numbers = [r["number"] for r in db.execute("SELECT number FROM worksheets ORDER BY number")]
+    assert numbers == [1, 2]
+    assert db.execute("SELECT status FROM worksheets WHERE id = ?", (new_id,)).fetchone()[0] == "issued"
+
+
+def test_deleting_an_issued_sheet_does_not_reuse_its_number(signed_in_client, db):
+    cid = make_child(signed_in_client, db)
+    first = _save(signed_in_client, cid)
+    _save(signed_in_client, cid)
+    preview = signed_in_client.post("/worksheets/delete", data={"sheet_id": str(first)})
+    assert preview.status_code == 200
+    assert b"not used again" in preview.data
+    assert db.execute("SELECT COUNT(*) FROM worksheets").fetchone()[0] == 2
+
+    deleted = signed_in_client.post(
+        "/worksheets/delete", data={"sheet_id": str(first), "confirm": "yes"}
+    )
+    assert deleted.status_code == 302
+    assert db.execute("SELECT id FROM worksheets WHERE id = ?", (first,)).fetchone() is None
+    assert db.execute("SELECT next_sheet_number FROM accounts").fetchone()[0] == 3
+    third = _save(signed_in_client, cid)
+    number = db.execute("SELECT number FROM worksheets WHERE id = ?", (third,)).fetchone()[0]
+    assert number == 3
+
+
+def test_cleanup_lists_old_issued_sheets_and_waits_for_confirmation(signed_in_client, db, clock):
+    cid = make_child(signed_in_client, db)
+    old = _save(signed_in_client, cid, title="Old practice")
+    clock.advance(15 * 86400)
+    recent = _save(signed_in_client, cid, title="Recent practice")
+
+    page = signed_in_client.get("/worksheets?cleanup=1").get_data(as_text=True)
+    assert "Old practice" in page
+    assert "Recent practice" not in page
+    assert "checked" in page
+
+    signed_in_client.post("/worksheets/delete", data={"sheet_id": str(old)})
+    assert db.execute("SELECT COUNT(*) FROM worksheets").fetchone()[0] == 2
+
+    signed_in_client.post(
+        "/worksheets/delete", data={"sheet_id": str(old), "confirm": "yes"}
+    )
+    left = [r["id"] for r in db.execute("SELECT id FROM worksheets")]
+    assert left == [recent]

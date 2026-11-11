@@ -63,3 +63,27 @@ def test_builder_ignores_another_accounts_child_in_the_url(app, register, signed
     page = other.get(f"/builder?child={cid}").get_data(as_text=True)
     assert "Sam" not in page
     assert "Lee&#39;s child" in page or "Lee's child" in page
+
+
+def test_other_account_cannot_rate_regenerate_duplicate_or_delete_a_sheet(
+    app, register, signed_in_client, db
+):
+    cid = make_child(signed_in_client, db, "Sam")
+    saved = signed_in_client.post(
+        "/builder", data={**sheet_values(cid, title="Sam secret sheet"), "action": "save"}
+    )
+    sheet_id = int(saved.headers["Location"].rsplit("/", 1)[1])
+    other = _second_account(app, register)
+
+    assert other.get(f"/worksheets/{sheet_id}/rate").status_code == 404
+    assert other.post(
+        f"/worksheets/{sheet_id}/rate", data={"performance": "4", "support": "3"}
+    ).status_code == 404
+    assert other.post(f"/worksheets/{sheet_id}/regenerate").status_code == 404
+    assert other.post(f"/worksheets/{sheet_id}/duplicate").status_code == 404
+    assert other.get(f"/builder?replace={sheet_id}").status_code == 404
+
+    other.post("/worksheets/delete", data={"sheet_id": str(sheet_id), "confirm": "yes"})
+    assert db.execute("SELECT title FROM worksheets WHERE id = ?", (sheet_id,)).fetchone()["title"] == "Sam secret sheet"
+    assert "Sam secret sheet" not in other.get("/worksheets").get_data(as_text=True)
+    assert db.execute("SELECT COUNT(*) FROM ratings").fetchone()[0] == 0

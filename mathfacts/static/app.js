@@ -98,6 +98,20 @@
     form.addEventListener("change", schedule);
   }
 
+  function initAidField() {
+    var form = document.getElementById("rate-form");
+    var field = document.getElementById("aid-field");
+    if (!form || !field) {
+      return;
+    }
+    function sync() {
+      var chosen = form.querySelector('input[name="support"]:checked');
+      field.hidden = !(chosen && chosen.value !== "3");
+    }
+    form.addEventListener("change", sync);
+    sync();
+  }
+
   function initPrintButtons() {
     document.querySelectorAll("[data-print]").forEach(function (button) {
       button.addEventListener("click", function () {
@@ -109,6 +123,7 @@
   document.addEventListener("DOMContentLoaded", function () {
     scaleSheets(document);
     initBuilder();
+    initAidField();
     initPrintButtons();
     window.addEventListener("resize", function () {
       scaleSheets(document);

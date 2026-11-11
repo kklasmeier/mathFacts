@@ -16,7 +16,8 @@ from flask import (
     url_for,
 )
 
-from . import builder, children, sheets, sheetview
+from . import builder, children, ratings, sheets, sheetview
+from . import clock
 from .sessions import get_db
 
 bp = Blueprint("sheets", __name__)
@@ -44,8 +45,26 @@ def _preview_view(plan, cfg, number):
     )
 
 
-def _render_builder(kids, values, errors, plan, cfg, status=200):
-    view = _preview_view(plan, cfg, g.account["next_sheet_number"]) if plan and cfg else None
+def _replace_row(db, replace_id):
+    """The issued sheet being replaced, or None. A finished sheet is "completed"."""
+    if not str(replace_id).isdigit():
+        return None
+    loaded = sheets.load_sheet(db, g.account["id"], int(replace_id))
+    if loaded is None:
+        return "missing"
+    row, options, _problems = loaded
+    if row["status"] != "issued":
+        return "completed"
+    return row, options
+
+
+def _render_builder(kids, values, errors, plan, cfg, status=200, replace=""):
+    number = g.account["next_sheet_number"]
+    if str(replace).isdigit():
+        found = _replace_row(get_db(), replace)
+        if isinstance(found, tuple):
+            number = found[0]["number"]
+    view = _preview_view(plan, cfg, number) if plan and cfg else None
     return render_template(
         "builder.html",
         kids=kids,
@@ -53,6 +72,8 @@ def _render_builder(kids, values, errors, plan, cfg, status=200):
         errors=errors,
         plan=plan,
         view=view,
+        replace=replace,
+        number=number,
         operations=builder.OPERATIONS_CHOICES,
         spacing_choices=builder.SPACING_CHOICES,
         order_choices=builder.ORDER_CHOICES,
@@ -64,22 +85,39 @@ def new_sheet():
     db = get_db()
     kids = children.list_children(db, g.account["id"])
 
+    replace = ""
     if request.method == "GET":
-        values = builder.defaults()
-        values.update(sheets.remembered_layout(db, g.account["id"]))
-        preset = request.args.get("child", "")
-        if preset.isdigit() and int(preset) in _active_child_ids(db):
-            values["child"] = preset
-        elif kids:
-            values["child"] = str(kids[0]["id"])
-        if not kids:
-            flash("Add a child before making a sheet.")
-            return redirect(url_for("children.new"))
+        found = _replace_row(db, request.args.get("replace", ""))
+        if found == "missing":
+            abort(404)
+        if found == "completed":
+            flash("This sheet was finished, so its problems stay as they were. Duplicate it to make a new one.")
+            return redirect(url_for("sheets.detail", sheet_id=int(request.args.get("replace"))))
+        if found:
+            row, options = found
+            child = children.get_child(db, g.account["id"], row["child_id"])
+            if child is None or child["archived"]:
+                flash("Restore this child before changing the sheet.")
+                return redirect(url_for("sheets.detail", sheet_id=row["id"]))
+            values = sheets.form_values(row, options)
+            replace = str(row["id"])
+        else:
+            values = builder.defaults()
+            values.update(sheets.remembered_layout(db, g.account["id"]))
+            preset = request.args.get("child", "")
+            if preset.isdigit() and int(preset) in _active_child_ids(db):
+                values["child"] = preset
+            elif kids:
+                values["child"] = str(kids[0]["id"])
+            if not kids:
+                flash("Add a child before making a sheet.")
+                return redirect(url_for("children.new"))
         cfg, _errors = builder.parse(values, _active_child_ids(db))
         plan = builder.build_sheet(cfg) if cfg else None
-        return _render_builder(kids, values, {}, plan, cfg)
+        return _render_builder(kids, values, {}, plan, cfg, replace=replace)
 
     values = builder.values_from_form(request.form)
+    replace = request.form.get("replace", "").strip()
     action = request.form.get("action", "save")
     if action not in ("save", "print", "regenerate", "refresh", "landscape"):
         abort(400)
@@ -90,15 +128,25 @@ def new_sheet():
 
     cfg, errors = builder.parse(values, _active_child_ids(db))
     if errors:
-        return _render_builder(kids, values, errors, None, None, status=400)
+        return _render_builder(kids, values, errors, None, None, status=400, replace=replace)
 
     sheets.remember_layout(db, g.account["id"], cfg)
     plan = builder.build_sheet(cfg)
     if action in ("regenerate", "refresh", "landscape"):
-        return _render_builder(kids, values, {}, plan, cfg)
+        return _render_builder(kids, values, {}, plan, cfg, replace=replace)
 
-    sheet_id, number = sheets.save_sheet(db, g.account["id"], cfg, plan)
-    flash(f"Saved sheet #{number:04d}.")
+    if replace.isdigit():
+        outcome = sheets.replace_sheet(db, g.account["id"], int(replace), cfg, plan)
+        if outcome is None:
+            abort(404)
+        if outcome == "completed":
+            flash("This sheet was finished, so it was not changed.")
+            return redirect(url_for("sheets.detail", sheet_id=int(replace)))
+        flash(f"Updated sheet #{outcome:04d}.")
+        sheet_id = int(replace)
+    else:
+        sheet_id, number = sheets.save_sheet(db, g.account["id"], cfg, plan)
+        flash(f"Saved sheet #{number:04d}.")
     if action == "print":
         suffix = "?answers=1" if cfg.answer_key else ""
         return redirect(url_for("sheets.print_sheet", sheet_id=sheet_id) + suffix)
@@ -114,8 +162,12 @@ def preview():
         return jsonify(ok=False, errors=errors), 400
     sheets.remember_layout(db, g.account["id"], cfg)
     plan = builder.build_sheet(cfg)
+    number = g.account["next_sheet_number"]
+    found = _replace_row(db, request.form.get("replace", ""))
+    if isinstance(found, tuple):
+        number = found[0]["number"]
     html = render_template(
-        "_preview.html", view=_preview_view(plan, cfg, g.account["next_sheet_number"])
+        "_preview.html", view=_preview_view(plan, cfg, number)
     )
     return jsonify(
         ok=True,
@@ -150,10 +202,233 @@ def detail(sheet_id):
         answers=False,
         tight=options["tight"],
     )
+    rating = ratings.get_rating(db, sheet_id)
     return render_template(
         "sheet_detail.html", sheet=row, options=options, child=child, view=view,
         operation_name=builder.OPERATIONS[row["operation"]], count=len(problems),
+        rating=rating,
+        performance_label=ratings.performance_label(rating["performance"]) if rating else "",
+        support_label=ratings.support_label(rating["support"]) if rating else "",
+        pace_label=ratings.pace_label(rating["pace"]) if rating else "",
+        aid_label=ratings.aid_label(rating["aid_type"]) if rating else "",
+        completed_on=(
+            clock.format_day(clock.parse_date(rating["completed_at"]))
+            if rating and clock.parse_date(rating["completed_at"]) else ""
+        ),
     )
+
+
+def _sheet_ids():
+    return [int(value) for value in request.form.getlist("sheet_id") if str(value).isdigit()]
+
+
+def _current_child_id(db, kids):
+    """The child the list opens on: the last one used, or the first active child."""
+    chosen = request.args.get("child")
+    if chosen is None:
+        chosen = sheets.get_pref(db, g.account["id"], "last_child_id")
+    if chosen == "all":
+        return None, "all"
+    if chosen and str(chosen).isdigit() and any(c["id"] == int(chosen) for c in kids):
+        sheets.set_pref(db, g.account["id"], "last_child_id", str(int(chosen)))
+        return int(chosen), str(int(chosen))
+    if kids:
+        sheets.set_pref(db, g.account["id"], "last_child_id", str(kids[0]["id"]))
+        return kids[0]["id"], str(kids[0]["id"])
+    return None, "all"
+
+
+@bp.get("/worksheets")
+def index():
+    db = get_db()
+    account_id = g.account["id"]
+    kids = children.list_children(db, account_id) + children.list_children(
+        db, account_id, archived=True
+    )
+    cleanup = request.args.get("cleanup") == "1"
+    child_id, child_value = (None, "all") if cleanup else _current_child_id(db, kids)
+    operation = request.args.get("operation", "")
+    if operation not in builder.OPERATIONS:
+        operation = ""
+    status = request.args.get("status", "")
+    if status not in ("issued", "completed"):
+        status = ""
+    support = request.args.get("support", "")
+    if support not in {str(value) for value, _label in ratings.SUPPORT}:
+        support = ""
+    date_from = clock.parse_date(request.args.get("date_from", ""))
+    date_to = clock.parse_date(request.args.get("date_to", ""))
+    page = request.args.get("page", "1")
+    page = int(page) if page.isdigit() and int(page) > 0 else 1
+    issued_before = None
+    if cleanup:
+        issued_before = clock.now() - sheets.UNFINISHED_DAYS * 86400
+        status = "issued"
+    rows, total = sheets.list_sheets(
+        db, account_id,
+        child_id=child_id,
+        operation=operation or None,
+        status=status or None,
+        support=int(support) if support else None,
+        search=request.args.get("q", ""),
+        date_from=date_from,
+        date_to=date_to,
+        issued_before=issued_before,
+        page=page,
+    )
+    pages = max(1, (total + sheets.PAGE_SIZE - 1) // sheets.PAGE_SIZE)
+    kept = request.args.to_dict()
+    kept.pop("cleanup", None)
+    kept.pop("page", None)
+    cancel_url = url_for("sheets.index", **kept)
+    cleanup_url = url_for("sheets.index", **{**kept, "cleanup": "1"})
+
+    def page_link(number):
+        args = request.args.to_dict()
+        args["page"] = number
+        return url_for("sheets.index", **args)
+
+    return render_template(
+        "sheet_list.html",
+        rows=rows,
+        kids=kids,
+        total=total,
+        page=page,
+        pages=pages,
+        cleanup=cleanup,
+        filters={
+            "q": request.args.get("q", ""),
+            "child": child_value,
+            "operation": operation,
+            "status": status,
+            "support": support,
+            "date_from": date_from.isoformat() if date_from else "",
+            "date_to": date_to.isoformat() if date_to else "",
+        },
+        operations=builder.OPERATIONS,
+        support_choices=ratings.SUPPORT,
+        performance_label=ratings.performance_label,
+        support_label=ratings.support_label,
+        format_day=clock.format_day,
+        local_date=clock.local_date,
+        parse_date=clock.parse_date,
+        symbols=builder.SYMBOL,
+        previous=page_link(page - 1) if page > 1 else None,
+        next_url=page_link(page + 1) if page < pages else None,
+        cancel_url=cancel_url,
+        cleanup_url=cleanup_url,
+        unfinished_days=sheets.UNFINISHED_DAYS,
+    )
+
+
+@bp.route("/worksheets/delete", methods=["GET", "POST"])
+def delete_selected():
+    db = get_db()
+    if request.method == "GET":
+        raw = request.args.get("ids", "")
+        ids = [int(part) for part in raw.split(",") if part.isdigit()]
+    else:
+        ids = _sheet_ids()
+    rows = sheets.owned_sheets(db, g.account["id"], ids)
+    if not rows:
+        flash("Select at least one sheet.")
+        return redirect(url_for("sheets.index"))
+    confirmed = request.method == "POST" and request.form.get("confirm") == "yes"
+    if not confirmed:
+        return render_template(
+            "delete_sheets.html",
+            rows=rows,
+            completed=any(row["status"] == "completed" for row in rows),
+        )
+    sheets.delete_sheets(db, g.account["id"], [row["id"] for row in rows])
+    count = len(rows)
+    flash(f"Deleted {count} sheet." if count == 1 else f"Deleted {count} sheets.")
+    return redirect(url_for("sheets.index"))
+
+
+@bp.route("/worksheets/<int:sheet_id>/rate", methods=["GET", "POST"])
+def rate(sheet_id):
+    db = get_db()
+    loaded = sheets.load_sheet(db, g.account["id"], sheet_id)
+    if loaded is None:
+        abort(404)
+    row, _options, _problems = loaded
+    child = children.get_child(db, g.account["id"], row["child_id"])
+    rating = ratings.get_rating(db, sheet_id)
+    today = clock.iso_date()
+    if request.method == "GET":
+        if rating:
+            values = {
+                "performance": str(rating["performance"]),
+                "support": str(rating["support"]),
+                "pace": "" if rating["pace"] is None else str(rating["pace"]),
+                "aid_type": rating["aid_type"] or "",
+                "completed_on": rating["completed_at"],
+                "notes": rating["notes"] or "",
+            }
+        else:
+            values = {
+                "performance": "", "support": "3", "pace": "", "aid_type": "",
+                "completed_on": today, "notes": "",
+            }
+        return render_template(
+            "rate_sheet.html", sheet=row, child=child, values=values, errors={},
+            performance=ratings.PERFORMANCE, support=ratings.SUPPORT, pace=ratings.PACE,
+            aids=ratings.AIDS,
+        )
+
+    clean, errors = ratings.validate(request.form, today)
+    if errors:
+        posted = {key: request.form.get(key, "") for key in (
+            "performance", "support", "pace", "aid_type", "completed_on", "notes"
+        )}
+        return render_template(
+            "rate_sheet.html", sheet=row, child=child, values=posted, errors=errors,
+            performance=ratings.PERFORMANCE, support=ratings.SUPPORT, pace=ratings.PACE,
+            aids=ratings.AIDS,
+        ), 400
+    ratings.save_rating(db, sheet_id, clean)
+    flash(f"Saved the rating for sheet #{row['number']:04d}.")
+    return redirect(url_for("sheets.detail", sheet_id=sheet_id))
+
+
+@bp.post("/worksheets/<int:sheet_id>/regenerate")
+def regenerate(sheet_id):
+    db = get_db()
+    loaded = sheets.load_sheet(db, g.account["id"], sheet_id)
+    if loaded is None:
+        abort(404)
+    row, options, _problems = loaded
+    if row["status"] != "issued":
+        flash("This sheet was finished, so its problems stay as they were. Duplicate it to make a new one.")
+        return redirect(url_for("sheets.detail", sheet_id=sheet_id))
+    values = sheets.form_values(row, options)
+    values["seed"] = str(builder.new_seed())
+    cfg, errors = builder.parse(values, {row["child_id"]})
+    if errors:
+        abort(400)
+    plan = builder.build_sheet(cfg)
+    number = sheets.replace_sheet(db, g.account["id"], sheet_id, cfg, plan)
+    flash(f"Regenerated sheet #{number:04d}.")
+    return redirect(url_for("sheets.print_sheet", sheet_id=sheet_id))
+
+
+@bp.post("/worksheets/<int:sheet_id>/duplicate")
+def duplicate(sheet_id):
+    db = get_db()
+    loaded = sheets.load_sheet(db, g.account["id"], sheet_id)
+    if loaded is None:
+        abort(404)
+    row, options, _problems = loaded
+    values = sheets.form_values(row, options)
+    values["seed"] = str(builder.new_seed())
+    cfg, errors = builder.parse(values, {row["child_id"]})
+    if errors:
+        abort(400)
+    plan = builder.build_sheet(cfg)
+    new_id, number = sheets.save_sheet(db, g.account["id"], cfg, plan)
+    flash(f"Duplicated as sheet #{number:04d}.")
+    return redirect(url_for("sheets.print_sheet", sheet_id=new_id))
 
 
 @bp.get("/worksheets/<int:sheet_id>/print")

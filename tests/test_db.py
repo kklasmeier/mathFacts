@@ -15,6 +15,8 @@ TABLES = {
     "children",
     "worksheets",
     "worksheet_problems",
+    "ratings",
+    "account_settings",
 }
 
 

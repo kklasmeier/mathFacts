@@ -185,6 +185,10 @@ input[type="text"],
 input[type="email"],
 input[type="password"],
 input[type="number"],
+input[type="search"],
+input[type="date"],
+select,
+textarea,
 input:not([type]) {
   font: inherit;
   font-weight: 400;
@@ -418,6 +422,23 @@ input:focus {
 
 .danger-zone { border-color: var(--error); }
 .danger-zone .button { background: var(--error); color: #fff; }
+
+textarea { min-height: 6rem; resize: vertical; }
+a.chip { text-decoration: none; display: inline-flex; align-items: center; }
+.chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.6rem 0 1rem; }
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.75rem;
+}
+.filters { margin-bottom: 1rem; }
+.sheet-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.6rem; }
+.sheet-card { margin: 0; }
+.sheet-card p { margin: 0.25rem 0 0; }
+.sheet-links { padding-left: 1.1rem; }
+.sheet-links li { margin: 0.35rem 0; }
+.pager { display: flex; gap: 1rem; align-items: center; }
+form.inline { display: inline; }
 
 @media (min-width: 900px) {
   .builder { grid-template-columns: minmax(320px, 400px) 1fr; }

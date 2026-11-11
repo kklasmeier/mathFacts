@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Delete sheets{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Delete {{ rows|length }} sheet{{ '' if rows|length == 1 else 's' }}?</h1>
+  <p>This removes the sheet, its problems, and any rating. The sheet number is not used again.</p>
+  {% if completed %}
+    <p class="error" role="alert">This sheet's rating counts toward progress.</p>
+  {% endif %}
+  <ul>
+    {% for row in rows %}
+      <li>#{{ '%04d' % row.number }} · {{ row.title }} · {{ row.status|capitalize }}</li>
+    {% endfor %}
+  </ul>
+  <form method="post" action="{{ url_for('sheets.delete_selected') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="confirm" value="yes">
+    {% for row in rows %}
+      <input type="hidden" name="sheet_id" value="{{ row.id }}">
+    {% endfor %}
+    <div class="actions">
+      <button type="submit" class="button">Delete</button>
+      <a class="button secondary" href="{{ url_for('sheets.index') }}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

@@ -153,6 +153,29 @@ MIGRATIONS = {
     3: [
         "ALTER TABLE accounts ADD COLUMN builder_prefs TEXT",
     ],
+    # Slice 3: ratings, and the small per-account preferences the sheet list uses.
+    4: [
+        """
+        CREATE TABLE ratings (
+            id INTEGER PRIMARY KEY,
+            worksheet_id INTEGER NOT NULL UNIQUE REFERENCES worksheets(id) ON DELETE CASCADE,
+            completed_at TEXT NOT NULL,
+            performance INTEGER NOT NULL CHECK (performance BETWEEN 1 AND 4),
+            support INTEGER NOT NULL CHECK (support BETWEEN 1 AND 3),
+            aid_type TEXT,
+            pace INTEGER CHECK (pace IS NULL OR pace BETWEEN 1 AND 4),
+            notes TEXT
+        )
+        """,
+        """
+        CREATE TABLE account_settings (
+            account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+            key TEXT NOT NULL,
+            value TEXT NOT NULL,
+            PRIMARY KEY (account_id, key)
+        )
+        """,
+    ],
 }
 
 SCHEMA_VERSION = max(MIGRATIONS)

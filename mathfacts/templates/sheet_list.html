@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Sheets{% endblock %}
+{% block content %}
+<h1>Sheets</h1>
+
+{% if cleanup %}
+  <div class="notice" role="status">
+    Issued sheets older than {{ unfinished_days }} days. Checked ones are ready to delete.
+    <a href="{{ cancel_url }}">Cancel</a>
+  </div>
+{% endif %}
+
+<form method="get" action="{{ url_for('sheets.index') }}" class="filters card">
+  <label>Search title or number
+    <input type="search" name="q" value="{{ filters.q }}" placeholder="Title or #">
+  </label>
+  <div class="filter-grid">
+    <label>Child
+      <select name="child">
+        <option value="all" {% if filters.child == 'all' %}selected{% endif %}>All</option>
+        {% for k in kids %}
+          <option value="{{ k.id }}" {% if filters.child == k.id|string %}selected{% endif %}>{{ k.name }}{% if k.archived %} (archived){% endif %}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Operation
+      <select name="operation">
+        <option value="">Any</option>
+        {% for key, name in operations.items() %}
+          <option value="{{ key }}" {% if filters.operation == key %}selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Status
+      <select name="status">
+        <option value="">Any</option>
+        <option value="issued" {% if filters.status == 'issued' %}selected{% endif %}>Issued</option>
+        <option value="completed" {% if filters.status == 'completed' %}selected{% endif %}>Completed</option>
+      </select>
+    </label>
+    <label>From
+      <input type="date" name="date_from" value="{{ filters.date_from }}">
+    </label>
+    <label>To
+      <input type="date" name="date_to" value="{{ filters.date_to }}">
+    </label>
+    <label>Support
+      <select name="support">
+        <option value="">Any</option>
+        {% for value, label in support_choices %}
+          <option value="{{ value }}" {% if filters.support == value|string %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  </div>
+  <div class="actions">
+    <button type="submit" class="button">Apply</button>
+    {% if not cleanup %}
+      <a class="button secondary" href="{{ cleanup_url }}">Clean up unfinished</a>
+    {% endif %}
+  </div>
+</form>
+
+<form method="post" action="{{ url_for('sheets.delete_selected') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {% if rows %}
+    <ul class="sheet-list">
+      {% for row in rows %}
+        <li class="card sheet-card">
+          <label class="check">
+            <input type="checkbox" name="sheet_id" value="{{ row.id }}" {% if cleanup %}checked{% endif %}>
+            <span>
+              <a href="{{ url_for('sheets.detail', sheet_id=row.id) }}">#{{ '%04d' % row.number }}</a>
+              {{ row.title }}
+            </span>
+          </label>
+          <p class="muted">
+            {{ row.child_name }}
+            · {{ symbols[row.operation] }} {{ operations[row.operation] }}
+            · {{ row.cols }}×{{ row.rows }}
+            · {% if row.completed_at %}{{ format_day(parse_date(row.completed_at)) }}{% else %}{{ format_day(local_date(row.created_at)) }}{% endif %}
+          </p>
+          <p>
+            {% if row.status == 'completed' %}
+              {{ performance_label(row.performance) }} · {{ support_label(row.support) }}
+            {% else %}
+              Issued
+            {% endif %}
+          </p>
+        </li>
+      {% endfor %}
+    </ul>
+    <div class="actions">
+      <button type="submit" class="button secondary">Delete selected</button>
+    </div>
+  {% else %}
+    <p class="muted">
+      {% if cleanup %}No unfinished sheets are older than {{ unfinished_days }} days.{% else %}No sheets match.{% endif %}
+    </p>
+  {% endif %}
+</form>
+
+{% if pages > 1 %}
+  <p class="pager">
+    {% if previous %}<a href="{{ previous }}">Previous</a>{% endif %}
+    Page {{ page }} of {{ pages }}
+    {% if next_url %}<a href="{{ next_url }}">Next</a>{% endif %}
+  </p>
+{% endif %}
+{% endblock %}

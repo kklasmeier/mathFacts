@@ -1,6 +1,6 @@
 # Implementation plan
 
-**Spec:** [Requirements/math-worksheet-spec.md](Requirements/math-worksheet-spec.md) version 1.13
+**Spec:** [Requirements/math-worksheet-spec.md](Requirements/math-worksheet-spec.md) version 1.18
 **Code:** this folder (`/home/pi/Programming/mathFacts`)
 **Run:** `http://192.168.1.26:8016` from `/home/pi/mathFacts` on the Pi
 
@@ -117,7 +117,7 @@ Tests: parser, pools, slot filler, fit math, and a saved sheet whose stored prob
 
 ### 3 — History and ratings
 
-List, detail, reprint, reprint with answer key, delete, clean up unfinished, rate.
+List, detail, reprint, reprint with answer key, delete, clean up unfinished, rate. Home shows the current child's unfinished count and five newest sheets. The ready-to-advance rule is implemented; its banner, badges, and the cleanup-age setting are later slices.
 
 Tests: reprint identity, regenerate rules, delete of an issued sheet, rating required fields.
 
