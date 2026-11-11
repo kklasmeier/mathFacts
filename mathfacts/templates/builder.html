@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% from "_sheet.html" import sheet_view %}
+{% block title %}New sheet{% endblock %}
+{% block content %}
+<h1>New sheet</h1>
+{% if errors %}
+  <p class="error" role="alert">Fix the fields marked below, then try again.</p>
+{% endif %}
+
+<div class="builder">
+<form id="builder-form" class="card builder-form" method="post"
+      action="{{ url_for('sheets.new_sheet') }}"
+      data-preview-url="{{ url_for('sheets.preview') }}" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="seed" value="{{ v.seed }}">
+  {# First submit button in the form. Pressing Enter in a text field uses it, and it must not save. #}
+  <button type="submit" name="action" value="refresh" class="sr-only" tabindex="-1" aria-hidden="true">Refresh preview</button>
+
+  <label>Child
+    <select name="child">
+      {% for k in kids %}
+        <option value="{{ k.id }}" {% if v.child == k.id|string %}selected{% endif %}>{{ k.name }}</option>
+      {% endfor %}
+    </select>
+    {% if errors.child %}<span class="error">{{ errors.child }}</span>{% endif %}
+  </label>
+
+  <fieldset>
+    <legend>Operation</legend>
+    <div class="choices">
+      {% for key, label, sym in operations %}
+        <label class="choice"><input type="radio" name="operation" value="{{ key }}" {% if v.operation == key %}checked{% endif %}> <span>{{ label }} <span class="muted">{{ sym }}</span></span></label>
+      {% endfor %}
+    </div>
+    {% if errors.operation %}<span class="error">{{ errors.operation }}</span>{% endif %}
+  </fieldset>
+
+  <label>{% if v.operation == 'div' %}Divisor{% else %}Operand A{% endif %}
+    <input name="a_spec" value="{{ v.a_spec }}" autocomplete="off" inputmode="text">
+    <span class="hint">Examples: 2, 1-9, 2,4,6. {% if v.operation == 'div' %}Zero is not allowed here.{% endif %}</span>
+    {% if errors.a_spec %}<span class="error">{{ errors.a_spec }}</span>{% endif %}
+  </label>
+
+  <label>{% if v.operation == 'div' %}Quotient{% else %}Operand B{% endif %}
+    <input name="b_spec" value="{{ v.b_spec }}" autocomplete="off" inputmode="text">
+    {% if errors.b_spec %}<span class="error">{{ errors.b_spec }}</span>{% endif %}
+  </label>
+
+  <div class="check-group">
+    <label class="check"><input type="checkbox" name="include_reverse" {% if v.include_reverse %}checked{% endif %}> <span>Include both orders (addition and multiplication)</span></label>
+    <label class="check"><input type="checkbox" name="allow_negatives" {% if v.allow_negatives %}checked{% endif %}> <span>Allow negatives (subtraction)</span></label>
+  </div>
+
+  <fieldset>
+    <legend>Problem layout</legend>
+    <div class="choices">
+      <label class="choice"><input type="radio" name="orientation" value="vertical" {% if v.orientation == 'vertical' %}checked{% endif %}> <span>Vertical (stacked)</span></label>
+      <label class="choice"><input type="radio" name="orientation" value="horizontal" {% if v.orientation == 'horizontal' %}checked{% endif %}> <span>Horizontal (inline)</span></label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Page</legend>
+    <div class="choices">
+      <label class="choice"><input type="radio" name="page_direction" value="portrait" {% if v.page_direction == 'portrait' %}checked{% endif %}> <span>Portrait</span></label>
+      <label class="choice"><input type="radio" name="page_direction" value="landscape" {% if v.page_direction == 'landscape' %}checked{% endif %}> <span>Landscape</span></label>
+    </div>
+    <button type="submit" name="action" value="landscape" id="preview-suggest" class="link-button" {% if not (plan and plan.suggest_landscape) %}hidden{% endif %}>Landscape fits this page larger. Switch to landscape</button>
+  </fieldset>
+
+  <div class="two-up">
+    <label>Across
+      <input name="cols" type="number" min="1" max="10" value="{{ v.cols }}" inputmode="numeric">
+      <span class="hint">1 to 10 columns</span>
+      {% if errors.cols %}<span class="error">{{ errors.cols }}</span>{% endif %}
+    </label>
+    <label>Down
+      <input name="rows" type="number" min="1" max="20" value="{{ v.rows }}" inputmode="numeric">
+      <span class="hint">1 to 20 rows</span>
+      {% if errors.rows %}<span class="error">{{ errors.rows }}</span>{% endif %}
+    </label>
+  </div>
+
+  <label>Order
+    <select name="order">
+      {% for key, label in order_choices %}
+        <option value="{{ key }}" {% if v.order == key %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    {% if errors.order %}<span class="error">{{ errors.order }}</span>{% endif %}
+  </label>
+
+  <label>Title
+    <input name="title" value="{{ v.title }}" maxlength="80" placeholder="Leave blank for an automatic title">
+    {% if errors.title %}<span class="error">{{ errors.title }}</span>{% endif %}
+  </label>
+
+  <div class="check-group">
+    <label class="check"><input type="checkbox" name="name_line" {% if v.name_line %}checked{% endif %}> <span>Name line</span></label>
+    <label class="check"><input type="checkbox" name="date_line" {% if v.date_line %}checked{% endif %}> <span>Date line</span></label>
+    <label class="check"><input type="checkbox" name="answer_key" {% if v.answer_key %}checked{% endif %}> <span>Answer key (page 2)</span></label>
+  </div>
+
+  <fieldset>
+    <legend>Spacing</legend>
+    <div class="choices">
+      {% for key, label in spacing_choices %}
+        <label class="choice"><input type="radio" name="spacing" value="{{ key }}" {% if v.spacing == key %}checked{% endif %}> <span>{{ label }}</span></label>
+      {% endfor %}
+    </div>
+    <span class="hint">Roomy leaves more space to write. Compact makes the numbers larger.</span>
+  </fieldset>
+
+  <div class="actions">
+    <button type="submit" name="action" value="print" class="button">Generate and print</button>
+    <button type="submit" name="action" value="save" class="button secondary">Save without printing</button>
+    <button type="submit" name="action" value="regenerate" class="button secondary">Regenerate</button>
+  </div>
+</form>
+
+<section class="preview-col">
+  <div class="card">
+    <p class="summary"><span id="preview-summary">{% if plan %}{{ plan.summary }} {{ plan.auto_label }}{% endif %}</span></p>
+    <ul id="preview-notices" class="notices">
+      {% if plan %}{% for note in plan.notices %}<li>{{ note }}</li>{% endfor %}{% endif %}
+    </ul>
+    <ul id="preview-errors" class="error-list">
+      {% for key, message in errors.items() %}<li>{{ message }}</li>{% endfor %}
+    </ul>
+  </div>
+  <div id="preview" class="preview-area">
+    {% if view %}
+      <div class="preview-frame {{ view.page }}">{{ sheet_view(view) }}</div>
+    {% endif %}
+  </div>
+</section>
+</div>
+{% endblock %}

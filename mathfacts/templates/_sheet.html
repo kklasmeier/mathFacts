@@ -1,0 +1,36 @@
+{# One printed page. Used by the builder preview, the saved sheet, and the print page. #}
+{% macro sheet_view(view) -%}
+<article class="sheet {{ view.page }} {{ view.pt_class }} {{ view.cols_class }} {{ view.rows_class }}{% if view.answers %} answers{% endif %}{% if view.tight %} tight{% endif %}">
+  <h2 class="sheet-title">{{ view.title }}</h2>
+  {% if view.name_line or view.date_line %}
+  <div class="sheet-lines">
+    {% if view.name_line %}<span><span class="label">Name</span><span class="line"></span></span>{% endif %}
+    {% if view.date_line %}<span><span class="label">Date</span><span class="line"></span></span>{% endif %}
+  </div>
+  {% endif %}
+  <div class="grid">
+    {% for c in view.cells %}
+      <div class="cell">
+        {% if c.kind == 'vertical' %}
+          <div class="vert">
+            <div class="top">{{ c.top }}</div>
+            <div class="op">{{ c.op }}</div>
+            <div class="bottom">{{ c.bottom }}</div>
+            <div class="rule"></div>
+            <div class="write">{% if c.answer is not none %}<span class="answer">{{ c.answer }}</span>{% endif %}</div>
+          </div>
+        {% elif c.kind == 'long' %}
+          <div class="long">
+            <div class="write">{% if c.answer is not none %}<span class="answer">{{ c.answer }}</span>{% endif %}</div>
+            <div class="divisor">{{ c.divisor }}</div>
+            <div class="dividend">{{ c.dividend }}</div>
+          </div>
+        {% else %}
+          <div class="horiz">{{ c.left }} {{ c.op }} {{ c.right }} = {% if c.answer is not none %}<span class="answer">{{ c.answer }}</span>{% else %}<span class="blank"></span>{% endif %}</div>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+  <div class="foot">{{ view.footer }}</div>
+</article>
+{%- endmacro %}

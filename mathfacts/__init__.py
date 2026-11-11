@@ -5,7 +5,6 @@ makes the client address come from nginx's X-Forwarded-For header, so the
 sign-in limits see real clients rather than 127.0.0.1.
 """
 
-import os
 
 from flask import Flask, g, request
 from flask_wtf import CSRFProtect
@@ -14,6 +13,8 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from . import db as database
 from .config import Config
 from .routes_auth import bp as auth_bp
+from .routes_children import bp as children_bp
+from .routes_sheets import bp as sheets_bp
 from .sessions import install as install_sessions
 from .web import bp as web_bp
 
@@ -49,6 +50,8 @@ def create_app(test_config=None):
     install_sessions(app)
     app.register_blueprint(web_bp)
     app.register_blueprint(auth_bp)
+    app.register_blueprint(children_bp)
+    app.register_blueprint(sheets_bp)
 
     @app.context_processor
     def inject_common():

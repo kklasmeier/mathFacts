@@ -1,0 +1,23 @@
+{% from "_sheet.html" import sheet_view %}
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ sheet.title }} · Math Facts</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='sheet.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='print-' ~ orientation ~ '.css') }}">
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+<body class="print-body">
+<div class="print-toolbar no-print">
+  <a href="{{ url_for('sheets.detail', sheet_id=sheet.id) }}">Back to sheet</a>
+  <button type="button" class="button" data-print>Print</button>
+  <span class="muted">{{ pages|length }} page{% if pages|length != 1 %}s{% endif %} · US Letter {{ orientation }}</span>
+</div>
+{% for page in pages %}
+  <div class="preview-frame {{ page.page }}">{{ sheet_view(page) }}</div>
+{% endfor %}
+</body>
+</html>

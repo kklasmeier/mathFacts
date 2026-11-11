@@ -1,0 +1,5 @@
+/* US Letter, landscape. A tight 0.3 in margin. The sheet is sized to fill it. */
+@page {
+  size: letter landscape;
+  margin: 0.3in;
+}

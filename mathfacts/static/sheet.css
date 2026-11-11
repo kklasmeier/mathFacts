@@ -1,0 +1,265 @@
+/* Printed worksheets. A sheet is always black on white, whatever theme the screen uses.
+
+Font size and grid size are classes (pt-8 … pt-72, cols-1 … cols-10, rows-1 … rows-20),
+not inline styles, so the Content Security Policy can stay strict. The server picks
+the class from the computed fit (spec 5.2.1).
+*/
+
+.sheet {
+  box-sizing: border-box;
+  background: #fff;
+  color: #000;
+  font-family: Arial, Helvetica, sans-serif;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  margin: 0;
+}
+/* Outer sheet box: US Letter minus a 0.3in page margin. Padding is the inset
+   inside that box (fit.py OUTER_IN and SHEET_PAD_IN). */
+.sheet.portrait { width: 7.9in; height: 10.4in; }
+.sheet.landscape { width: 10.4in; height: 7.9in; }
+.sheet { padding: 0.15in; }
+
+.sheet .sheet-title {
+  flex: 0 0 auto;
+  height: 0.55in;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  font-size: 16pt;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.sheet .sheet-lines {
+  flex: 0 0 auto;
+  height: 0.3in;
+  display: flex;
+  align-items: flex-end;
+  gap: 0.4in;
+  font-size: 11pt;
+}
+.sheet .sheet-lines .line {
+  display: inline-block;
+  width: 2.6in;
+  border-bottom: 1px solid #000;
+}
+.sheet .sheet-lines .label { margin-right: 0.1in; }
+
+.sheet .grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+}
+.sheet .foot {
+  flex: 0 0 auto;
+  height: 0.3in;
+  line-height: 0.3in;
+  font-size: 8pt;
+  color: #555;
+  text-align: right;
+}
+
+.sheet .cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  font-size: calc(var(--problem-font-pt, 14) * 1pt);
+  line-height: 1.2;
+}
+.sheet .answer { font-weight: 700; }
+
+/* Vertical problem: top number, operator beside the bottom number, rule under both. */
+.vert {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  justify-items: end;
+  column-gap: 0.3em;
+  font-variant-numeric: tabular-nums;
+}
+.vert .top { grid-column: 2; grid-row: 1; }
+.vert .op { grid-column: 1; grid-row: 2; }
+.vert .bottom { grid-column: 2; grid-row: 2; }
+.vert .rule {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  justify-self: stretch;
+  height: 0.12em;
+  margin: 0.12em 0 0.16em;
+  background: #000;
+}
+.vert .write {
+  grid-column: 1 / -1;
+  grid-row: 4;
+  justify-self: stretch;
+  height: 1.2em;
+  text-align: right;
+}
+
+/* Long division: one bracket (top and left together), not a separate parenthesis. */
+.long {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  align-items: end;
+}
+.long .write { grid-column: 2; grid-row: 1; height: 1.2em; text-align: center; font-weight: 700; }
+.long .divisor { grid-column: 1; grid-row: 2; padding: 0 0.25em 0.05em 0; }
+.long .dividend {
+  grid-column: 2;
+  grid-row: 2;
+  border-top: 0.1em solid #000;
+  border-left: 0.1em solid #000;
+  border-top-left-radius: 0.45em 0.7em;
+  padding: 0.08em 0.35em 0 0.3em;
+}
+
+/* Horizontal problem: a × b = blank */
+.horiz { white-space: nowrap; }
+.horiz .blank {
+  display: inline-block;
+  width: 2.4em;
+  border-bottom: 0.08em solid #000;
+  vertical-align: baseline;
+}
+.horiz .answer { font-weight: 700; }
+
+/* Grid shape. The class names are read from the sheet element. */
+.sheet.cols-1 .grid { grid-template-columns: repeat(1, 1fr); }
+.sheet.cols-2 .grid { grid-template-columns: repeat(2, 1fr); }
+.sheet.cols-3 .grid { grid-template-columns: repeat(3, 1fr); }
+.sheet.cols-4 .grid { grid-template-columns: repeat(4, 1fr); }
+.sheet.cols-5 .grid { grid-template-columns: repeat(5, 1fr); }
+.sheet.cols-6 .grid { grid-template-columns: repeat(6, 1fr); }
+.sheet.cols-7 .grid { grid-template-columns: repeat(7, 1fr); }
+.sheet.cols-8 .grid { grid-template-columns: repeat(8, 1fr); }
+.sheet.cols-9 .grid { grid-template-columns: repeat(9, 1fr); }
+.sheet.cols-10 .grid { grid-template-columns: repeat(10, 1fr); }
+.sheet.rows-1 .grid { grid-template-rows: repeat(1, 1fr); }
+.sheet.rows-2 .grid { grid-template-rows: repeat(2, 1fr); }
+.sheet.rows-3 .grid { grid-template-rows: repeat(3, 1fr); }
+.sheet.rows-4 .grid { grid-template-rows: repeat(4, 1fr); }
+.sheet.rows-5 .grid { grid-template-rows: repeat(5, 1fr); }
+.sheet.rows-6 .grid { grid-template-rows: repeat(6, 1fr); }
+.sheet.rows-7 .grid { grid-template-rows: repeat(7, 1fr); }
+.sheet.rows-8 .grid { grid-template-rows: repeat(8, 1fr); }
+.sheet.rows-9 .grid { grid-template-rows: repeat(9, 1fr); }
+.sheet.rows-10 .grid { grid-template-rows: repeat(10, 1fr); }
+.sheet.rows-11 .grid { grid-template-rows: repeat(11, 1fr); }
+.sheet.rows-12 .grid { grid-template-rows: repeat(12, 1fr); }
+.sheet.rows-13 .grid { grid-template-rows: repeat(13, 1fr); }
+.sheet.rows-14 .grid { grid-template-rows: repeat(14, 1fr); }
+.sheet.rows-15 .grid { grid-template-rows: repeat(15, 1fr); }
+.sheet.rows-16 .grid { grid-template-rows: repeat(16, 1fr); }
+.sheet.rows-17 .grid { grid-template-rows: repeat(17, 1fr); }
+.sheet.rows-18 .grid { grid-template-rows: repeat(18, 1fr); }
+.sheet.rows-19 .grid { grid-template-rows: repeat(19, 1fr); }
+.sheet.rows-20 .grid { grid-template-rows: repeat(20, 1fr); }
+
+/* Tight sheets: too many problems for normal writing space, so the writing space is
+   cut to its floor (fit.py FLOOR_* constants). The problems stay whole on the page. */
+.sheet.tight .cell { line-height: 1; }
+.sheet.tight .vert .rule { margin: 0; }
+.sheet.tight .vert .write,
+.sheet.tight .long .write { height: 1em; }
+
+/* Screen preview: the sheet is scaled to the frame by app.js */
+.preview-frame {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+.preview-frame .sheet { transform-origin: top left; }
+.preview-frame.portrait { max-width: 7.9in; }
+.preview-frame.landscape { max-width: 10.4in; }
+
+/* Printing: sheets fill the page, toolbars and frame chrome disappear */
+@media print {
+  body.print-body { background: #fff; margin: 0; padding: 0; }
+  .no-print { display: none !important; }
+  .preview-frame {
+    height: auto !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    max-width: none !important;
+    width: auto !important;
+  }
+  .preview-frame .sheet { transform: none !important; }
+  .preview-frame + .preview-frame { break-before: page; }
+}
+
+/* Font size classes: pt-8 is 4pt, pt-20 is 10pt, pt-72 is 36pt (half-point steps). */
+.sheet.pt-8 { --problem-font-pt: 4; }
+.sheet.pt-9 { --problem-font-pt: 4.5; }
+.sheet.pt-10 { --problem-font-pt: 5; }
+.sheet.pt-11 { --problem-font-pt: 5.5; }
+.sheet.pt-12 { --problem-font-pt: 6; }
+.sheet.pt-13 { --problem-font-pt: 6.5; }
+.sheet.pt-14 { --problem-font-pt: 7; }
+.sheet.pt-15 { --problem-font-pt: 7.5; }
+.sheet.pt-16 { --problem-font-pt: 8; }
+.sheet.pt-17 { --problem-font-pt: 8.5; }
+.sheet.pt-18 { --problem-font-pt: 9; }
+.sheet.pt-19 { --problem-font-pt: 9.5; }
+.sheet.pt-20 { --problem-font-pt: 10; }
+.sheet.pt-21 { --problem-font-pt: 10.5; }
+.sheet.pt-22 { --problem-font-pt: 11; }
+.sheet.pt-23 { --problem-font-pt: 11.5; }
+.sheet.pt-24 { --problem-font-pt: 12; }
+.sheet.pt-25 { --problem-font-pt: 12.5; }
+.sheet.pt-26 { --problem-font-pt: 13; }
+.sheet.pt-27 { --problem-font-pt: 13.5; }
+.sheet.pt-28 { --problem-font-pt: 14; }
+.sheet.pt-29 { --problem-font-pt: 14.5; }
+.sheet.pt-30 { --problem-font-pt: 15; }
+.sheet.pt-31 { --problem-font-pt: 15.5; }
+.sheet.pt-32 { --problem-font-pt: 16; }
+.sheet.pt-33 { --problem-font-pt: 16.5; }
+.sheet.pt-34 { --problem-font-pt: 17; }
+.sheet.pt-35 { --problem-font-pt: 17.5; }
+.sheet.pt-36 { --problem-font-pt: 18; }
+.sheet.pt-37 { --problem-font-pt: 18.5; }
+.sheet.pt-38 { --problem-font-pt: 19; }
+.sheet.pt-39 { --problem-font-pt: 19.5; }
+.sheet.pt-40 { --problem-font-pt: 20; }
+.sheet.pt-41 { --problem-font-pt: 20.5; }
+.sheet.pt-42 { --problem-font-pt: 21; }
+.sheet.pt-43 { --problem-font-pt: 21.5; }
+.sheet.pt-44 { --problem-font-pt: 22; }
+.sheet.pt-45 { --problem-font-pt: 22.5; }
+.sheet.pt-46 { --problem-font-pt: 23; }
+.sheet.pt-47 { --problem-font-pt: 23.5; }
+.sheet.pt-48 { --problem-font-pt: 24; }
+.sheet.pt-49 { --problem-font-pt: 24.5; }
+.sheet.pt-50 { --problem-font-pt: 25; }
+.sheet.pt-51 { --problem-font-pt: 25.5; }
+.sheet.pt-52 { --problem-font-pt: 26; }
+.sheet.pt-53 { --problem-font-pt: 26.5; }
+.sheet.pt-54 { --problem-font-pt: 27; }
+.sheet.pt-55 { --problem-font-pt: 27.5; }
+.sheet.pt-56 { --problem-font-pt: 28; }
+.sheet.pt-57 { --problem-font-pt: 28.5; }
+.sheet.pt-58 { --problem-font-pt: 29; }
+.sheet.pt-59 { --problem-font-pt: 29.5; }
+.sheet.pt-60 { --problem-font-pt: 30; }
+.sheet.pt-61 { --problem-font-pt: 30.5; }
+.sheet.pt-62 { --problem-font-pt: 31; }
+.sheet.pt-63 { --problem-font-pt: 31.5; }
+.sheet.pt-64 { --problem-font-pt: 32; }
+.sheet.pt-65 { --problem-font-pt: 32.5; }
+.sheet.pt-66 { --problem-font-pt: 33; }
+.sheet.pt-67 { --problem-font-pt: 33.5; }
+.sheet.pt-68 { --problem-font-pt: 34; }
+.sheet.pt-69 { --problem-font-pt: 34.5; }
+.sheet.pt-70 { --problem-font-pt: 35; }
+.sheet.pt-71 { --problem-font-pt: 35.5; }
+.sheet.pt-72 { --problem-font-pt: 36; }
+
+

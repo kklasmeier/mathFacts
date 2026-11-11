@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "_sheet.html" import sheet_view %}
+{% block title %}Sheet #{{ '%04d' % sheet.number }}{% endblock %}
+{% block content %}
+<h1>Sheet #{{ '%04d' % sheet.number }}</h1>
+<p class="muted">{{ sheet.title }} · {{ child.name if child else 'Child' }}</p>
+
+<div class="detail">
+  <section class="card">
+    <dl class="facts">
+      <dt>Operation</dt><dd>{{ operation_name }}</dd>
+      <dt>Problems</dt><dd>{{ sheet.cols }} across × {{ sheet.rows }} down ({{ count }} spaces)</dd>
+      <dt>Layout</dt><dd>{{ 'Vertical' if sheet.orientation == 'vertical' else 'Horizontal' }}, {{ options.page_direction }}</dd>
+      <dt>Order</dt><dd>{{ sheet.order_mode|capitalize }}</dd>
+      <dt>Size</dt><dd>{{ options.font_pt|string|replace('.0', '') }}pt</dd>
+      <dt>Status</dt><dd>{{ sheet.status|capitalize }}</dd>
+    </dl>
+    {% if options.notices %}
+      <ul class="notices">{% for note in options.notices %}<li>{{ note }}</li>{% endfor %}</ul>
+    {% endif %}
+    <div class="actions">
+      <a class="button" href="{{ url_for('sheets.print_sheet', sheet_id=sheet.id) }}">Print</a>
+      <a class="button secondary" href="{{ url_for('sheets.print_sheet', sheet_id=sheet.id) }}?answers=1">Print with answer key</a>
+      <a class="link" href="{{ url_for('sheets.new_sheet', child=sheet.child_id) }}">New sheet for {{ child.name if child else 'this child' }}</a>
+    </div>
+  </section>
+
+  <section class="preview-area">
+    <div class="preview-frame {{ view.page }}">{{ sheet_view(view) }}</div>
+  </section>
+</div>
+{% endblock %}

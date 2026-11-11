@@ -201,8 +201,8 @@ An on-screen preview of the page exactly as it will print (including any badge b
  -----
 
 ```
-- Right-aligned operands, operator on the second line to the left of the lower number, horizontal rule, blank space for the answer.
-- Division in vertical mode uses the long-division bracket layout: `divisor ⟌ dividend`.
+- Right-aligned operands, operator on the second line to the left of the lower number, horizontal rule under the operator and the lower number, blank space for the answer.
+- Division in vertical mode uses the long-division bracket layout: `divisor ⟌ dividend`. The bracket is one connected mark (top bar and left stroke together), not a parenthesis plus a separate line.
 
 **Horizontal format**
 ```
@@ -231,13 +231,13 @@ Whatever the user chooses for across × down, orientation, and header options, t
    - *Vertical:* needs about 3 text lines (top number, operator + bottom number, rule) plus an **answer writing space of at least 1 line height**. The widest problem on the sheet (e.g., `12 × 12`, `144 ÷ 12`) determines the width requirement. For division, add room for the bracket.
    - *Horizontal:* needs the widest expression (`144 ÷ 12 = ____`) on one line, with the blank at least ~4 characters wide.
    - Font size = `min(height-limited size, width-limited size)`, then scaled by the Spacing nudge. Spacing is about blank space in the cell, not a request for a larger font: **Roomy ≈ 85%** of the fitted size (more blank space), **Normal = 100%**, **Compact ≈ 110%** (larger type, less blank space). Compact is never allowed to overflow the cell; if 110% would overflow, the font stays at the largest size that fits.
-5. **Clamp** font size to a legible range: minimum 10pt, maximum ~36pt.
+5. **Clamp** the font only at the top, about 36pt. There is no 10pt minimum: a dense page uses the fitted size, down to a 4pt floor so the sheet still draws. Sizes under 10pt are allowed.
 6. **Distribute leftover space** evenly: when the font is capped by the maximum or by width, extra height becomes extra writing space rather than empty bottom margin. Use a CSS grid with equal rows and columns.
 7. **Rendering:** the server computes the font size and writes it to the page as a CSS variable (e.g., `--problem-font-pt`). The print stylesheet uses `@page` with the exact paper size, and the grid has a fixed height equal to the grid area. Overflow is `hidden` as a last-resort safeguard, not expected to trigger.
 
 **Builder feedback**
 - The live preview shows the computed font size (e.g., "Auto size: 18pt") and cell dimensions.
-- If the computed size would drop below 10pt (too many rows/columns), the builder warns: "Too many problems to print legibly. Try fewer columns/rows or landscape," and shows the largest across × down that fits at the minimum size. The user may still proceed; the sheet prints at the minimum size and still fits by reducing writing space to its floor; the sheet record is flagged.
+- A size under 10pt is shown as the auto size (for example, "Auto size: 7pt"). The builder does not warn or refuse that layout. The sheet prints at the fitted size.
 - If landscape would suit the layout better, the builder **suggests** landscape with a one-click switch; it never switches silently.
 - The answer key page uses the identical grid and font size as the worksheet.
 - The computed font size, cell size, and badge banner presence are saved with the worksheet (`options_json`) so a reprint is identical even if the sizing algorithm changes later.
@@ -2005,7 +2005,7 @@ Standard plans and the starter badge catalog. A note at the top says that change
 32. Reprinting a sheet produces identical problems, sizing, and badges.
 33. The printed page, with or without a badge banner, fits on exactly one Letter page for any allowed across × down (auto-fit; no manual size needed), and shows the sheet number in the footer.
 34. Changing across × down in the builder changes the computed font size in the preview; the preview and the printed output match.
-35. An overcrowded setup (e.g., 10 × 20 vertical) triggers the legibility warning and suggests a layout that fits at 10pt or larger.
+35. An overcrowded setup (e.g., 10 × 20 vertical) still prints on one page, at whatever size fits, including sizes under 10pt.
 35a. At a phone width, Home, New sheet, Sheets, Rate, and Admin accounts are usable without the page scrolling sideways. The menu reaches every destination the wide header shows. The builder's Across, Down, preview, and Regenerate controls are on the page. Sheet and account rows stack into cards.
 35b. Light, Dark, and Match device are available on Sign in and, once signed in, from the username menu. The choice sticks on that browser. Charts and badges follow the theme. A printed sheet stays black on white in either theme.
 
@@ -2083,3 +2083,5 @@ Earlier drafts listed the items below as open. Each one was already answered in 
 - **1.13:** Ports checked on `192.168.1.26` over SSH. 8080 is used by the `networktraffic` PHP site and 8888 by security cameras. The app now uses nginx on 8016 and gunicorn on 127.0.0.1:8017, both free.
 - **1.14:** Slice 1 build decisions recorded. Failed sign-ins are limited per username (5 per 15 minutes) and per network address (20 per 15 minutes), so a shared household address is not locked out. A stale remembered secret within the 60-second grace window signs in without rotating the cookie again. Added the `rate_events` table and documented the `sid` and framework `session` cookies, the hashed session IDs, and the trusted proxy header.
 - **1.15:** Registration collects a name, stored as `display_name`. Home and the header show that name. The username stays the sign-in name. The name can be changed on the Account page.
+- **1.16:** Slice 2 build decisions. The preview and the saved sheet come from one function with a seed, so a saved sheet prints the same problems the parent approved. "Sequential" order keeps the A-then-B cycle, and Regenerate does not change it when nothing clashes. If a page of repeats cannot be separated by swaps, the builder rebuilds the same facts greedily. Random order with repeats uses an even spread when the facts are fewer than the spaces. This revision held a size under 10pt at 10pt with reduced writing space. 1.17 removes that hold. Each saved sheet records its font size, cell size, legibility, tight, and fit flags. Sheets are numbered per account, and the number appears in the footer.
+- **1.17:** The font may go under 10pt. A dense page uses the fitted size instead of being held at 10pt. The builder remembers the last problem layout, page direction, across, down, and order for the account, and uses them as the defaults on the next new sheet. Printed sheets keep a tight 0.3in page margin plus a small inset so the problems are not flush with the edge. The vertical rule runs under the operator. The long-division bracket is one connected mark.

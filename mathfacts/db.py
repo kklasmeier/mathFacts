@@ -94,6 +94,65 @@ MIGRATIONS = {
         """,
         "CREATE INDEX rate_events_bucket ON rate_events(bucket, at)",
     ],
+    # Slice 2: children, worksheets, and the exact problems printed on each sheet.
+    # Spec section 6. Plan and rating columns arrive with their slices.
+    2: [
+        "ALTER TABLE accounts ADD COLUMN next_sheet_number INTEGER NOT NULL DEFAULT 1",
+        """
+        CREATE TABLE children (
+            id INTEGER PRIMARY KEY,
+            account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+            name TEXT NOT NULL,
+            grade TEXT,
+            color TEXT,
+            archived INTEGER NOT NULL DEFAULT 0,
+            show_badge_shelf INTEGER NOT NULL DEFAULT 0,
+            created_at INTEGER NOT NULL
+        )
+        """,
+        "CREATE INDEX children_account ON children(account_id, archived)",
+        """
+        CREATE TABLE worksheets (
+            id INTEGER PRIMARY KEY,
+            account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+            number INTEGER NOT NULL,
+            child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+            created_at INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            operation TEXT NOT NULL CHECK (operation IN ('add', 'sub', 'mul', 'div')),
+            a_spec TEXT NOT NULL,
+            b_spec TEXT NOT NULL,
+            include_reverse INTEGER NOT NULL DEFAULT 0,
+            orientation TEXT NOT NULL CHECK (orientation IN ('vertical', 'horizontal')),
+            cols INTEGER NOT NULL,
+            rows INTEGER NOT NULL,
+            order_mode TEXT NOT NULL CHECK (order_mode IN ('sequential', 'shuffled', 'random')),
+            seed INTEGER NOT NULL,
+            revision INTEGER NOT NULL DEFAULT 0,
+            status TEXT NOT NULL DEFAULT 'issued' CHECK (status IN ('issued', 'completed')),
+            options_json TEXT NOT NULL,
+            UNIQUE (account_id, number)
+        )
+        """,
+        "CREATE INDEX worksheets_child ON worksheets(child_id, created_at)",
+        """
+        CREATE TABLE worksheet_problems (
+            id INTEGER PRIMARY KEY,
+            worksheet_id INTEGER NOT NULL REFERENCES worksheets(id) ON DELETE CASCADE,
+            position INTEGER NOT NULL,
+            op TEXT NOT NULL,
+            a INTEGER NOT NULL,
+            b INTEGER NOT NULL,
+            answer INTEGER NOT NULL,
+            dividend INTEGER,
+            UNIQUE (worksheet_id, position)
+        )
+        """,
+    ],
+    # Slice 2 follow-up: the builder remembers the last layout for this account.
+    3: [
+        "ALTER TABLE accounts ADD COLUMN builder_prefs TEXT",
+    ],
 }
 
 SCHEMA_VERSION = max(MIGRATIONS)

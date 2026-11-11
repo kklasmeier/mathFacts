@@ -74,12 +74,14 @@ tests/
   test_specs.py          number specs and fact pools
   test_slots.py          repeats, spacing, seeds
   test_fit.py            one-page size math
+  test_children.py       child CRUD, 10-child limit, archive, typed-name delete (slice 2)
   test_web.py            health, sign-in redirect, headers, static files (slice 0-1)
   test_db.py             schema, migrations, WAL, foreign keys (slice 0-1)
   test_security.py       password rules, hashing, tokens (slice 1)
   test_auth.py           register, sign-in, remembered devices, sign-out, password change (slice 1)
-  test_isolation.py      cross-account 404s
-  test_sheets.py         save, reprint, regenerate, delete
+  test_isolation.py      cross-account 404s (slice 2: children, sheets, preview)
+  test_sheets.py         builder, preview matches saved sheet, regenerate, print pages (slice 2)
+  helpers.py             shared form helpers for route tests
   test_ratings.py        rating form and advancement counts
   test_plans.py          slice 5
   test_badges.py         slice 5

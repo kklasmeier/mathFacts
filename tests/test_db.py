@@ -12,6 +12,9 @@ TABLES = {
     "sessions",
     "login_events",
     "rate_events",
+    "children",
+    "worksheets",
+    "worksheet_problems",
 }
 
 

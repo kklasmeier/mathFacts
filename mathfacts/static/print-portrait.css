@@ -1,0 +1,5 @@
+/* US Letter, portrait. A tight 0.3 in margin. The sheet is sized to fill it. */
+@page {
+  size: letter portrait;
+  margin: 0.3in;
+}

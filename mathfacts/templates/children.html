@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Children{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Children</h1>
+  {% if total < limit %}
+    <a class="button" href="{{ url_for('children.new') }}">Add a child</a>
+  {% endif %}
+</div>
+{% if total >= limit %}
+  <p class="muted">Your account has {{ limit }} children, the limit for now.</p>
+{% endif %}
+
+{% if not active and not archived %}
+  <section class="card">
+    <p>No children yet. Add a first name or nickname to start making sheets.</p>
+  </section>
+{% endif %}
+
+<ul class="child-list">
+  {% for c in active %}
+  <li class="card child-row">
+    <span class="swatch swatch-{{ c.color or 'none' }}" aria-hidden="true"></span>
+    <div><strong>{{ c.name }}</strong>{% if c.grade %} <span class="muted">· Grade {{ c.grade }}</span>{% endif %}</div>
+    <div class="row-actions">
+      <a href="{{ url_for('sheets.new_sheet', child=c.id) }}">New sheet</a>
+      <a href="{{ url_for('children.edit', child_id=c.id) }}">Edit</a>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+
+{% if archived %}
+  <h2>Archived</h2>
+  <ul class="child-list">
+    {% for c in archived %}
+    <li class="card child-row">
+      <span class="swatch swatch-{{ c.color or 'none' }}" aria-hidden="true"></span>
+      <div><strong>{{ c.name }}</strong> <span class="muted">· archived</span></div>
+      <div class="row-actions">
+        <form method="post" action="{{ url_for('children.restore', child_id=c.id) }}" class="inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="link-button">Restore</button>
+        </form>
+        <a href="{{ url_for('children.edit', child_id=c.id) }}">Edit</a>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+{% endif %}
+{% endblock %}
