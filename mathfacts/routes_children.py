@@ -52,9 +52,9 @@ def new():
             colors=children.COLORS,
         ), 400
 
-    children.create_child(db, account_id, values)
+    child_id = children.create_child(db, account_id, values)
     flash(f"Added {values['name']}.")
-    return redirect(url_for("children.index"))
+    return redirect(url_for("web.index", child=child_id))
 
 
 @bp.route("/children/<int:child_id>/edit", methods=["GET", "POST"])

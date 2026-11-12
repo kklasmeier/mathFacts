@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}New plan{% endblock %}
+{% block content %}
+<h1>New plan</h1>
+<form method="post" class="card" action="{{ url_for('plans.new_plan') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label>Name
+    <input name="name" required maxlength="80">
+    {% if errors.name %}<span class="error">{{ errors.name }}</span>{% endif %}
+  </label>
+  <label>Operation
+    <select name="operation">
+      {% for key, label in operations.items() %}
+        <option value="{{ key }}">{{ label }}</option>
+      {% endfor %}
+    </select>
+    {% if errors.operation %}<span class="error">{{ errors.operation }}</span>{% endif %}
+  </label>
+  <div class="actions">
+    <button type="submit" class="button">Create</button>
+    <a class="button secondary" href="{{ url_for('plans.library') }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

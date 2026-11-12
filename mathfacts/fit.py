@@ -22,6 +22,7 @@ PAGE_IN = {"portrait": (7.6, 10.1), "landscape": (10.1, 7.6)}  # outer minus the
 TITLE_IN = 0.55  # title line
 LINE_IN = 0.3  # name and date line, when shown
 FOOTER_IN = 0.3  # sheet number and operation footer
+BANNER_IN = 0.7  # badge banner row, reserved only when the sheet shows badges
 
 MIN_PT = 10.0  # informational: under this, type is small, but the layout is still allowed
 MAX_PT = 36.0
@@ -101,10 +102,12 @@ def _measure(problems, layout):
 
 
 def fit_sheet(problems, layout, page_direction, cols, rows, spacing="normal",
-              name_line=True, date_line=True):
+              name_line=True, date_line=True, banner=False):
     """Return the Fit for a page: the font size and cell size for this layout."""
     page_w, page_h = PAGE_IN[page_direction]
     head = TITLE_IN + (LINE_IN if (name_line or date_line) else 0.0)
+    if banner:
+        head += BANNER_IN
     grid_w = page_w
     grid_h = page_h - head - FOOTER_IN
     cell_w = grid_w / cols
@@ -155,11 +158,12 @@ def largest_legible(facts, layout, page_direction, spacing="normal",
     return best
 
 
-def suggest_landscape(problems, layout, cols, rows, spacing, name_line, date_line, portrait_fit):
+def suggest_landscape(problems, layout, cols, rows, spacing, name_line, date_line, portrait_fit,
+                      banner=False):
     """Suggest landscape only when it is clearly better (spec 5.2.1 builder feedback)."""
     # Compare the fitted sizes, before the 5pt floor and the 36pt cap.
     if portrait_fit.raw_pt >= 14:
         return False
     landscape = fit_sheet(problems, layout, "landscape", cols, rows, spacing,
-                          name_line, date_line)
+                          name_line, date_line, banner=banner)
     return landscape.raw_pt >= portrait_fit.raw_pt + 2

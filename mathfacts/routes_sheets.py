@@ -16,7 +16,7 @@ from flask import (
     url_for,
 )
 
-from . import builder, children, ratings, sheets, sheetview
+from . import badges, builder, children, plans, ratings, sheets, sheetview
 from . import clock
 from .sessions import get_db
 
@@ -42,7 +42,34 @@ def _preview_view(plan, cfg, number):
         date_line=cfg.date_line,
         answers=False,
         tight=plan.fit.tight,
+        badges=cfg.banner_items,
+        banner_more=cfg.banner_more,
+        stage_name=cfg.stage_name,
     )
+
+
+def _sync_stage_fields(values, cfg):
+    """Show the stage's facts, even if the form tried to change them."""
+    if not cfg.plan_stage_id:
+        values["plan_stage_id"] = ""
+        return
+    values["operation"] = cfg.operation
+    values["a_spec"] = cfg.a_spec
+    values["b_spec"] = cfg.b_spec
+    values["plan_stage_id"] = str(cfg.plan_stage_id)
+
+
+def _prepare(db, values, child_ids, saved_banner=None):
+    """Parse, lock a plan stage's facts, and decide the badge banner."""
+    cfg, errors = builder.parse(values, child_ids)
+    if errors:
+        return None, errors
+    plans.lock_stage(db, g.account["id"], cfg)
+    if saved_banner is not None:
+        badges.use_saved_banner(cfg, saved_banner)
+    else:
+        badges.apply_pending(cfg, db)
+    return cfg, {}
 
 
 def _replace_row(db, replace_id):
@@ -101,18 +128,34 @@ def new_sheet():
                 return redirect(url_for("sheets.detail", sheet_id=row["id"]))
             values = sheets.form_values(row, options)
             replace = str(row["id"])
+            saved_banner = options
         else:
-            values = builder.defaults()
-            values.update(sheets.remembered_layout(db, g.account["id"]))
-            preset = request.args.get("child", "")
-            if preset.isdigit() and int(preset) in _active_child_ids(db):
-                values["child"] = preset
-            elif kids:
-                values["child"] = str(kids[0]["id"])
+            saved_banner = None
+            stage_id = request.args.get("stage", "")
+            child_arg = request.args.get("child", "")
+            staged = None
+            if stage_id.isdigit() and child_arg.isdigit():
+                staged = plans.builder_values(
+                    db, g.account["id"], int(child_arg), int(stage_id)
+                )
+            if staged:
+                values = builder.defaults()
+                values.update(staged)
+                values["seed"] = str(builder.new_seed())
+            else:
+                values = builder.defaults()
+                values.update(sheets.remembered_layout(db, g.account["id"]))
+                preset = request.args.get("child", "")
+                if preset.isdigit() and int(preset) in _active_child_ids(db):
+                    values["child"] = preset
+                elif kids:
+                    values["child"] = str(kids[0]["id"])
             if not kids:
                 flash("Add a child before making a sheet.")
                 return redirect(url_for("children.new"))
-        cfg, _errors = builder.parse(values, _active_child_ids(db))
+        cfg, _errors = _prepare(db, values, _active_child_ids(db), saved_banner)
+        if cfg:
+            _sync_stage_fields(values, cfg)
         plan = builder.build_sheet(cfg) if cfg else None
         return _render_builder(kids, values, {}, plan, cfg, replace=replace)
 
@@ -126,9 +169,15 @@ def new_sheet():
     if action == "landscape":
         values["page_direction"] = "landscape"
 
-    cfg, errors = builder.parse(values, _active_child_ids(db))
+    saved_banner = None
+    if replace.isdigit():
+        found = _replace_row(db, replace)
+        if isinstance(found, tuple):
+            saved_banner = found[1]
+    cfg, errors = _prepare(db, values, _active_child_ids(db), saved_banner)
     if errors:
         return _render_builder(kids, values, errors, None, None, status=400, replace=replace)
+    _sync_stage_fields(values, cfg)
 
     sheets.remember_layout(db, g.account["id"], cfg)
     plan = builder.build_sheet(cfg)
@@ -146,6 +195,7 @@ def new_sheet():
         sheet_id = int(replace)
     else:
         sheet_id, number = sheets.save_sheet(db, g.account["id"], cfg, plan)
+        badges.mark_shown(db, cfg, sheet_id)
         flash(f"Saved sheet #{number:04d}.")
     if action == "print":
         suffix = "?answers=1" if cfg.answer_key else ""
@@ -157,7 +207,10 @@ def new_sheet():
 def preview():
     """Recompute the preview as the parent types. Saves nothing."""
     db = get_db()
-    cfg, errors = builder.parse(builder.values_from_form(request.form), _active_child_ids(db))
+    values = builder.values_from_form(request.form)
+    found = _replace_row(db, request.form.get("replace", ""))
+    saved_banner = found[1] if isinstance(found, tuple) else None
+    cfg, errors = _prepare(db, values, _active_child_ids(db), saved_banner)
     if errors:
         return jsonify(ok=False, errors=errors), 400
     sheets.remember_layout(db, g.account["id"], cfg)
@@ -201,6 +254,9 @@ def detail(sheet_id):
         date_line=options["date_line"],
         answers=False,
         tight=options["tight"],
+        badges=options.get("banner") or [],
+        banner_more=options.get("banner_more") or 0,
+        stage_name=options.get("stage_name") or "",
     )
     rating = ratings.get_rating(db, sheet_id)
     return render_template(
@@ -388,7 +444,20 @@ def rate(sheet_id):
             aids=ratings.AIDS,
         ), 400
     ratings.save_rating(db, sheet_id, clean)
+    plans.refresh_child(db, row["child_id"], clear_snooze=True)
+    for result in plans.graduate_ready(db, g.account["id"], row["child_id"]):
+        if result == "finished":
+            flash("That was the last stage. The plan is complete.")
+        else:
+            flash(f"Moved on to {result}.")
+    earned = badges.evaluate(db, row["child_id"], g.account["id"])
     flash(f"Saved the rating for sheet #{row['number']:04d}.")
+    if earned:
+        flash("New badge earned! " + ", ".join(earned) + ".")
+    if row["plan_stage_id"]:
+        for progress in plans.child_plans(db, g.account["id"], row["child_id"]):
+            plans.ensure_open_sheet(db, g.account["id"], row["child_id"], progress["plan_id"])
+        return redirect(url_for("web.index", child=row["child_id"]))
     return redirect(url_for("sheets.detail", sheet_id=sheet_id))
 
 
@@ -404,7 +473,7 @@ def regenerate(sheet_id):
         return redirect(url_for("sheets.detail", sheet_id=sheet_id))
     values = sheets.form_values(row, options)
     values["seed"] = str(builder.new_seed())
-    cfg, errors = builder.parse(values, {row["child_id"]})
+    cfg, errors = _prepare(db, values, {row["child_id"]}, options)
     if errors:
         abort(400)
     plan = builder.build_sheet(cfg)
@@ -422,11 +491,13 @@ def duplicate(sheet_id):
     row, options, _problems = loaded
     values = sheets.form_values(row, options)
     values["seed"] = str(builder.new_seed())
-    cfg, errors = builder.parse(values, {row["child_id"]})
+    values["badges_on"] = True
+    cfg, errors = _prepare(db, values, {row["child_id"]})
     if errors:
         abort(400)
     plan = builder.build_sheet(cfg)
     new_id, number = sheets.save_sheet(db, g.account["id"], cfg, plan)
+    badges.mark_shown(db, cfg, new_id)
     flash(f"Duplicated as sheet #{number:04d}.")
     return redirect(url_for("sheets.print_sheet", sheet_id=new_id))
 
@@ -455,6 +526,9 @@ def print_sheet(sheet_id):
             date_line=options["date_line"],
             answers=with_answers,
             tight=options["tight"],
+            badges=options.get("banner") or [],
+            banner_more=options.get("banner_more") or 0,
+            stage_name=options.get("stage_name") or "",
         )
 
     pages = [view(False)]

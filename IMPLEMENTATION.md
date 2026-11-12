@@ -1,6 +1,6 @@
 # Implementation plan
 
-**Spec:** [Requirements/math-worksheet-spec.md](Requirements/math-worksheet-spec.md) version 1.19
+**Spec:** [Requirements/math-worksheet-spec.md](Requirements/math-worksheet-spec.md) version 1.23
 **Code:** this folder (`/home/pi/Programming/mathFacts`)
 **Run:** `http://192.168.1.26:8016` from `/home/pi/mathFacts` on the Pi
 
@@ -61,7 +61,7 @@ That command uses a temporary SQLite database, makes no network calls, and does 
 | Sign-in | First account is admin. Duplicate email or username is rejected. A short password is rejected. The remembered cookie signs the user in. Sign-out requires the password next time. A wrong remembered secret revokes that token. |
 | Isolation | Cross-account IDs return 404. |
 | Sheets | Reprint returns the same problems. Regenerate on an issued sheet keeps the number. Regenerate is refused on a completed sheet. Deleting an issued sheet does not change progress. |
-| Ratings | Performance and support are required. Aids count toward advancement. Two of the last three at Good or better is ready to advance, including sheets done with an aid. |
+| Ratings | Performance and support are required. Aids count toward advancement. A stage waits for its minimum number of finished sheets, then the last sheet’s rating moves the student on, including sheets done with an aid. |
 | Plans and badges | Added in slice 5. Next sheet opens the builder and does not save by itself. A child can receive many sheets on the same stage. Badges are awarded once and are not removed when a sheet is deleted. |
 | Themes and layout | Appearance cookie is accepted. Narrow width is a later browser check, not a unit test. |
 
@@ -131,7 +131,7 @@ Tests: inactive account cannot sign in, reset forces a new password, admin canno
 
 System plan copies, wizard, next sheet into the builder, stay on a stage across many sheets, progress pages, badge award and banner.
 
-Tests: pair rules, review mix, advancement (2 of the last 3, aids count), badge once-only, banner of 4 plus "+N more" when more than 5 are pending, deleting an issued sheet returns its badges to pending, deleting a completed sheet does not.
+Tests: pair rules, review mix, advancement (minimum sheets, then the last sheet, aids count), badge once-only, banner of 4 plus "+N more" when more than 5 are pending, deleting an issued sheet returns its badges to pending, deleting a completed sheet does not.
 
 ## Deploy
 

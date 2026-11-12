@@ -30,11 +30,15 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="link-button">Regenerate</button>
           </form>
-          <a class="link" href="{{ url_for('sheets.new_sheet', replace=sheet.id) }}">Change and regenerate</a>
-          <form method="post" action="{{ url_for('sheets.duplicate', sheet_id=sheet.id) }}" class="inline">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="link-button">Duplicate</button>
-          </form>
+          {% if not sheet.plan_stage_id %}
+            <a class="link" href="{{ url_for('sheets.new_sheet', replace=sheet.id) }}">Change and regenerate</a>
+          {% endif %}
+          {% if not sheet.plan_stage_id %}
+            <form method="post" action="{{ url_for('sheets.duplicate', sheet_id=sheet.id) }}" class="inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="link-button">Duplicate</button>
+            </form>
+          {% endif %}
         </div>
       {% else %}
         <p>This sheet was finished, so its problems stay as they were. Duplicate it to make a new one.</p>

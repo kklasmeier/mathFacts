@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Plans{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Plans</h1>
+  <a class="button" href="{{ url_for('plans.new_plan') }}">New plan</a>
+</div>
+<p class="muted">These are yours. Assign a plan when a student should start working it.</p>
+{% if cards %}
+  {% for card in cards %}
+    <article class="card">
+      <div class="spread">
+        <div>
+          <h2>{{ card.plan.name }}</h2>
+          <p class="muted">{{ card.count }} {{ 'stage' if card.count == 1 else 'stages' }} · {{ card.plan.default_cols }} across × {{ card.plan.default_rows }} down · {{ 'Vertical' if card.plan.default_orientation == 'vertical' else 'Horizontal' }} problems</p>
+          <p class="muted">{{ card.minimum }} {{ 'sheet' if card.minimum == 1 else 'sheets' }} before moving on. The last one must be {{ bars[card.bar] }}.</p>
+          {% if card.kids %}
+            <p>{% for kid in card.kids %}<span class="pill pill-good">Assigned to {{ kid.name }}</span> {% endfor %}</p>
+          {% else %}
+            <p><span class="pill">Not assigned</span></p>
+          {% endif %}
+        </div>
+        <div class="row">
+          <a class="button secondary" href="{{ url_for('plans.editor', plan_id=card.plan.id) }}">Edit</a>
+          <a class="button secondary" href="{{ url_for('plans.assign', plan_id=card.plan.id) }}">Assign</a>
+          <a class="button secondary" href="{{ url_for('plans.delete', plan_id=card.plan.id) }}">Delete</a>
+        </div>
+      </div>
+    </article>
+  {% endfor %}
+{% else %}
+  <p class="muted">No plans yet. Create one, or copy a standard plan and edit it as your own.</p>
+{% endif %}
+<h2>Standard plans</h2>
+<ul class="sheet-list">
+  {% for plan in systems %}
+    <li class="card">
+      <p><strong>{{ plan.name }}</strong></p>
+      <a href="{{ url_for('plans.system_view', operation=plan.operation) }}">View</a>
+      <form method="post" action="{{ url_for('plans.copy_system', operation=plan.operation) }}" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="link-button">Copy into my plans</button>
+      </form>
+    </li>
+  {% endfor %}
+</ul>
+{% endblock %}

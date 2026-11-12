@@ -64,13 +64,15 @@ def save_sheet(db, account_id, cfg, plan):
         """
         INSERT INTO worksheets (
             account_id, number, child_id, created_at, title, operation, a_spec, b_spec,
-            include_reverse, orientation, cols, rows, order_mode, seed, options_json
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            include_reverse, orientation, cols, rows, order_mode, seed, options_json,
+            plan_stage_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             account_id, number, cfg.child_id, clock.now(), plan.title, cfg.operation,
             cfg.a_spec, cfg.b_spec, 1 if cfg.include_reverse else 0, cfg.orientation,
             cfg.cols, cfg.rows, cfg.order, cfg.seed, json.dumps(_options(cfg, plan)),
+            cfg.plan_stage_id,
         ),
     )
     sheet_id = cursor.lastrowid
@@ -102,6 +104,8 @@ def form_values(row, options):
         "name_line": bool(options.get("name_line", True)),
         "date_line": bool(options.get("date_line", True)),
         "answer_key": bool(options.get("answer_key")),
+        "badges_on": bool(options.get("banner") or options.get("banner_more")),
+        "plan_stage_id": "" if row["plan_stage_id"] is None else str(row["plan_stage_id"]),
     }
 
 
@@ -120,6 +124,9 @@ def _options(cfg, plan):
         "tight": plan.fit.tight,
         "fits": plan.fit.fits,
         "notices": plan.notices,
+        "banner": list(cfg.banner_items),
+        "banner_more": cfg.banner_more,
+        "stage_name": cfg.stage_name,
     }
 
 
@@ -156,13 +163,14 @@ def replace_sheet(db, account_id, sheet_id, cfg, plan):
         UPDATE worksheets SET
             child_id = ?, title = ?, operation = ?, a_spec = ?, b_spec = ?,
             include_reverse = ?, orientation = ?, cols = ?, rows = ?, order_mode = ?,
-            seed = ?, revision = revision + 1, options_json = ?
+            seed = ?, revision = revision + 1, options_json = ?, plan_stage_id = ?
         WHERE id = ? AND account_id = ?
         """,
         (
             cfg.child_id, plan.title, cfg.operation, cfg.a_spec, cfg.b_spec,
             1 if cfg.include_reverse else 0, cfg.orientation, cfg.cols, cfg.rows,
-            cfg.order, cfg.seed, json.dumps(_options(cfg, plan)), sheet_id, account_id,
+            cfg.order, cfg.seed, json.dumps(_options(cfg, plan)), cfg.plan_stage_id,
+            sheet_id, account_id,
         ),
     )
     _write_problems(db, sheet_id, plan.problems)
@@ -177,7 +185,7 @@ def owned_sheets(db, account_id, sheet_ids):
     marks = ",".join("?" for _ in ids)
     return db.execute(
         f"""
-        SELECT id, number, title, status FROM worksheets
+        SELECT id, number, title, status, child_id FROM worksheets
         WHERE account_id = ? AND id IN ({marks})
         ORDER BY number DESC
         """,
@@ -193,11 +201,18 @@ def delete_sheets(db, account_id, sheet_ids):
     rows = owned_sheets(db, account_id, sheet_ids)
     if not rows:
         return []
+    from . import badges, plans
+    child_ids = set()
+    for row in rows:
+        badges.release_for_sheet(db, row["id"], completed=row["status"] == "completed")
+        child_ids.add(row["child_id"])
     marks = ",".join("?" for _ in rows)
     db.execute(
         f"DELETE FROM worksheets WHERE account_id = ? AND id IN ({marks})",
         (account_id, *[row["id"] for row in rows]),
     )
+    for child_id in child_ids:
+        plans.refresh_child(db, child_id)
     return rows
 
 

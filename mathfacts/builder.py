@@ -9,7 +9,7 @@ import random
 from dataclasses import dataclass, field
 
 from .fit import SPACINGS, fit_sheet, suggest_landscape
-from .pools import OPERATIONS, SYMBOL, build_pool
+from .pools import OPERATIONS, SYMBOL, build_pool, constrained_pool
 from .slots import ORDERS, arrange
 from .specs import OPERAND_LIMIT, SpecError, parse_spec
 
@@ -41,9 +41,10 @@ TEXT_DEFAULTS = {
     "title": "",
     "spacing": "normal",
     "seed": "",
+    "plan_stage_id": "",
 }
-BOOL_FIELDS = ("include_reverse", "allow_negatives", "name_line", "date_line", "answer_key")
-BOOL_DEFAULTS = {"name_line": True, "date_line": True}
+BOOL_FIELDS = ("include_reverse", "allow_negatives", "name_line", "date_line", "answer_key", "badges_on")
+BOOL_DEFAULTS = {"name_line": True, "date_line": True, "badges_on": True}
 
 
 def new_seed():
@@ -90,6 +91,16 @@ class SheetConfig:
     answer_key: bool
     spacing: str
     seed: int
+    plan_stage_id: int | None = None
+    pair_rule: str = "any"
+    pair_rule_limit: int | None = None
+    review_pct: int = 0
+    review_facts: tuple = ()
+    badges_on: bool = True
+    banner_items: tuple = ()
+    banner_more: int = 0
+    banner_ids: tuple = ()
+    stage_name: str = ""
 
 
 @dataclass
@@ -164,6 +175,8 @@ def parse(values, child_ids):
 
     seed_text = str(values.get("seed", "")).strip()
     seed = int(seed_text) if seed_text.lstrip("-").isdigit() else new_seed()
+    stage_text = str(values.get("plan_stage_id", "")).strip()
+    plan_stage_id = int(stage_text) if stage_text.isdigit() else None
 
     include_reverse = bool(values.get("include_reverse")) and operation in ("add", "mul")
     allow_negatives = bool(values.get("allow_negatives")) and operation == "sub"
@@ -197,6 +210,8 @@ def parse(values, child_ids):
         answer_key=bool(values.get("answer_key")),
         spacing=spacing,
         seed=seed,
+        plan_stage_id=plan_stage_id,
+        badges_on=bool(values.get("badges_on", True)),
     ), {}
 
 
@@ -204,11 +219,19 @@ def build_sheet(cfg):
     """Build the problems and layout for a config. Pure: same config, same result."""
     a_values = parse_spec(cfg.a_spec, OPERAND_LIMIT[cfg.operation])
     b_values = parse_spec(cfg.b_spec, OPERAND_LIMIT[cfg.operation])
-    pool = build_pool(cfg.operation, a_values, b_values, cfg.include_reverse, cfg.allow_negatives)
+    pool = constrained_pool(
+        cfg.operation, a_values, b_values, cfg.include_reverse, cfg.allow_negatives,
+        cfg.pair_rule, cfg.pair_rule_limit,
+    )
 
-    arr = arrange(pool.facts, cfg.rows, cfg.cols, cfg.order, random.Random(cfg.seed))
+    review = list(cfg.review_facts)
+    arr = arrange(
+        pool.facts, cfg.rows, cfg.cols, cfg.order, random.Random(cfg.seed),
+        review=review, review_pct=cfg.review_pct if review else 0,
+    )
+    show_banner = bool(cfg.banner_items or cfg.banner_more)
     fit = fit_sheet(arr.cells, cfg.orientation, cfg.page_direction, cfg.cols, cfg.rows,
-                    cfg.spacing, cfg.name_line, cfg.date_line)
+                    cfg.spacing, cfg.name_line, cfg.date_line, banner=show_banner)
 
     notices = []
     if pool.dropped_zero:
@@ -218,6 +241,11 @@ def build_sheet(cfg):
             f"{pool.dropped_negative} subtraction facts with a smaller first number were "
             "dropped. Turn on Allow negatives to keep them."
         )
+    if review and cfg.review_pct:
+        review_n = int(round(arr.slots * cfg.review_pct / 100))
+        review_n = max(0, min(arr.slots, review_n))
+        if review_n:
+            notices.append(f"{review_n} spaces are review from earlier stages.")
     if arr.all_same:
         notices.append("Every problem on this page is the same fact.")
     elif arr.repeats:
@@ -239,7 +267,7 @@ def build_sheet(cfg):
 
     suggest = cfg.page_direction == "portrait" and suggest_landscape(
         arr.cells, cfg.orientation, cfg.cols, cfg.rows, cfg.spacing,
-        cfg.name_line, cfg.date_line, fit,
+        cfg.name_line, cfg.date_line, fit, banner=show_banner,
     )
 
     title = cfg.title or f"{OPERATIONS[cfg.operation]}: {cfg.a_spec} {SYMBOL[cfg.operation]} {cfg.b_spec}"

@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Home{% endblock %}
 {% block content %}
+{% if child %}{% include "_child_bar.html" %}{% endif %}
 <section class="card">
   <h1>Welcome, {{ current_account['display_name'] or current_account['username'] }}</h1>
   {% if not kids %}
@@ -16,6 +17,37 @@
         {% endfor %}
       </div>
     {% endif %}
+    {% if not plan_cards %}
+      <p><a class="button" href="{{ url_for('plans.library') }}">Set up a plan</a></p>
+    {% endif %}
+    {% for card in plan_cards if not card.row.finished %}
+      <article class="home-plan">
+        <div>
+          <h2>{{ card.row.plan_name }}</h2>
+          <p>Stage {{ card.row.position }} of {{ card.stages|length }} · {{ card.row.stage_name }}</p>
+          <p class="muted">{{ card.done }} of {{ card.minimum }} sheets finished on this stage.</p>
+          <ol class="stage-dots">
+            {% for stage in card.stages %}
+              <li class="{% if stage.id == card.row.current_stage_id %}is-current{% elif stage.position < card.row.position %}is-done{% endif %}">{{ stage.position }}</li>
+            {% endfor %}
+          </ol>
+        </div>
+        {% if card.waiting %}
+          <div class="card">
+            <p>Sheet #{{ '%04d' % card.waiting.number }}</p>
+            <p>{{ card.waiting.a_spec }} {{ symbols[card.waiting.operation] }} {{ card.waiting.b_spec }}</p>
+            <div class="actions">
+              <a class="button secondary" href="{{ url_for('sheets.detail', sheet_id=card.waiting.id) }}">Open</a>
+              <a class="button secondary" href="{{ url_for('sheets.print_sheet', sheet_id=card.waiting.id) }}">Print</a>
+              <a class="button" href="{{ url_for('sheets.rate', sheet_id=card.waiting.id) }}">Grade</a>
+            </div>
+          </div>
+        {% endif %}
+      </article>
+    {% endfor %}
+    {% if pending_badges %}
+      <p>{{ pending_badges }} new badge{{ '' if pending_badges == 1 else 's' }} will print on the next sheet.</p>
+    {% endif %}
     <p>
       {% if unfinished == 1 %}
         <a href="{{ url_for('sheets.index', child=child.id, status='issued') }}">1 unfinished sheet</a> for {{ child.name }}.
@@ -25,15 +57,26 @@
         No unfinished sheets for {{ child.name }}.
       {% endif %}
     </p>
-    <h2>Recent sheets</h2>
+    <h2>Sheets outside a plan</h2>
     {% if recent %}
-      <ul class="sheet-links">
+      <ul class="recent-list">
         {% for row in recent %}
+          {% set op_name = operations[row.operation] %}
+          {% set custom = row.title and not row.title.startswith(op_name + ':') %}
           <li>
-            <a href="{{ url_for('sheets.detail', sheet_id=row.id) }}">
-              #{{ '%04d' % row.number }} · {{ row.title }}
-              · {% if row.status == 'completed' %}{{ performance_label(row.performance) }} · {{ support_label(row.support) }}{% else %}Issued{% endif %}
-              · {% if row.completed_at %}{{ format_day(parse_date(row.completed_at)) }}{% else %}{{ format_day(local_date(row.created_at)) }}{% endif %}
+            <a class="recent-card" href="{{ url_for('sheets.detail', sheet_id=row.id) }}">
+              <span class="recent-title">{{ row.title if custom else op_name }}</span>
+              <span class="recent-date">{% if row.completed_at %}{{ format_day(parse_date(row.completed_at)) }}{% else %}{{ format_day(local_date(row.created_at)) }}{% endif %}</span>
+              <span class="recent-facts">{% if custom %}{{ op_name }} · {% endif %}{{ row.a_spec }} {{ symbols[row.operation] }} {{ row.b_spec }}</span>
+              <span class="recent-number">Sheet #{{ '%04d' % row.number }}</span>
+              <span class="recent-status">
+                {% if row.status == 'completed' %}
+                  <span class="pill {{ 'pill-good' if row.performance >= 3 }}">{{ performance_label(row.performance) }}</span>
+                  <span class="pill">{{ support_label(row.support) }}</span>
+                {% else %}
+                  <span class="pill pill-issued">Issued · not rated yet</span>
+                {% endif %}
+              </span>
             </a>
           </li>
         {% endfor %}
@@ -42,7 +85,7 @@
       <p class="muted">No sheets yet for {{ child.name }}.</p>
     {% endif %}
     <div class="actions">
-      <a class="button" href="{{ url_for('sheets.new_sheet', child=child.id) }}">New sheet</a>
+      <a class="button" href="{{ url_for('sheets.new_sheet', child=child.id) }}">New one-off sheet</a>
       <a class="button secondary" href="{{ url_for('sheets.index', child=child.id) }}">Sheets</a>
     </div>
   {% endif %}

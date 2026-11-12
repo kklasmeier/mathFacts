@@ -8,6 +8,15 @@
     {% if view.date_line %}<span><span class="label">Date</span><span class="line"></span></span>{% endif %}
   </div>
   {% endif %}
+  {% if view.badges or view.banner_more %}
+  <div class="badge-banner">
+    <span>New badges earned!</span>
+    {% for badge in view.badges %}
+      <span class="badge-chip"><span class="mark">{{ badge.icon }}</span> {{ badge.name }}</span>
+    {% endfor %}
+    {% if view.banner_more %}<span class="badge-chip">+{{ view.banner_more }} more</span>{% endif %}
+  </div>
+  {% endif %}
   <div class="grid">
     {% for c in view.cells %}
       <div class="cell">

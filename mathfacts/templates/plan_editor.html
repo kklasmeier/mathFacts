@@ -1,0 +1,292 @@
+{% extends "base.html" %}
+{% from "_help.html" import tip %}
+{% block title %}{{ plan.name }}{% endblock %}
+{% block content %}
+<h1>{{ plan.name }}</h1>
+<p class="muted">Stages run from top to bottom. {% if readonly %}Standard plan. Saving a copy leaves this one unchanged.{% else %}Each card is one stage.{% endif %}</p>
+{% if readonly %}
+  <form method="post" action="{{ url_for('plans.copy_system', operation=plan.operation) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="button">Save a copy</button>
+  </form>
+{% else %}
+  <form method="post" class="card" id="plan-name" action="{{ url_for('plans.editor', plan_id=plan.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="action" value="rename">
+    <div class="field-head">
+      <label for="plan-name-input">Name</label>
+      {% call tip("Name") %}
+        <p>The name of this plan. Students see it on their home, next to the sheet that is waiting.</p>
+      {% endcall %}
+    </div>
+    <input id="plan-name-input" name="name" value="{{ plan.name }}" maxlength="80">
+    <button type="submit" class="button secondary">Rename</button>
+  </form>
+{% endif %}
+
+<section class="card plan-options" id="plan-options">
+  <h2>Plan options</h2>
+  <p class="hint">Every new sheet in this plan starts with these. Saving writes them onto every stage. Open ? for what a setting does.</p>
+  {% if readonly %}
+    <p>{{ plan.default_cols }} across × {{ plan.default_rows }} down · {{ 'Vertical' if plan.default_orientation == 'vertical' else 'Horizontal' }} · {{ spacings[plan.spacing] }}</p>
+  {% else %}
+    <form method="post" action="{{ url_for('plans.editor', plan_id=plan.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="options">
+      <div class="filter-grid">
+        <div class="field">
+          <div class="field-head">
+            <label for="plan-cols">Across</label>
+            {% call tip("Across") %}
+              <p>How many problems sit in each row. Every new sheet in this plan uses this number. The usual value is 5.</p>
+            {% endcall %}
+          </div>
+          <input id="plan-cols" name="cols" type="number" min="1" max="10" value="{{ plan.default_cols }}">
+        </div>
+        <div class="field">
+          <div class="field-head">
+            <label for="plan-rows">Down</label>
+            {% call tip("Down") %}
+              <p>How many rows of problems are on the sheet. The usual value is 4, which with 5 across makes 20 problems.</p>
+            {% endcall %}
+          </div>
+          <input id="plan-rows" name="rows" type="number" min="1" max="20" value="{{ plan.default_rows }}">
+        </div>
+        <div class="field">
+          <div class="field-head">
+            <label for="plan-spacing">Spacing</label>
+            {% call tip("Spacing") %}
+              <p>How much blank space sits between problems. Roomy gives more room to write. Compact fits the problems closer together. Normal is the usual choice.</p>
+            {% endcall %}
+          </div>
+          <select id="plan-spacing" name="spacing">
+            {% for key, label in spacings.items() %}
+              <option value="{{ key }}" {% if plan.spacing == key %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <div class="field-head">
+            <label for="plan-min">Sheets before moving on</label>
+            {% call tip("Sheets before moving on") %}
+              <p>The minimum number of finished sheets on every stage. Sheets before that number only count toward the minimum. Once it is met, only the last sheet is checked. Meet the bar and the student moves to the next stage. Miss it and they stay, and the next sheet is checked the same way. A sheet finished with an aid still counts. The usual value is 3. Saving this writes the number onto every stage.</p>
+            {% endcall %}
+          </div>
+          <input id="plan-min" name="min_sheets" type="number" min="1" max="20" value="{{ stages[0].min_sheets if stages else 3 }}">
+        </div>
+        <div class="field">
+          <div class="field-head">
+            <label for="plan-bar">The last sheet must be</label>
+            {% call tip("The last sheet must be") %}
+              <p>The bar for that last sheet. Good or better is the usual bar. This is checked only after the minimum number of sheets is finished. Saving this writes the bar onto every stage.</p>
+            {% endcall %}
+          </div>
+          <select id="plan-bar" name="performance">
+            {% for value, label in bars.items() %}
+              <option value="{{ value }}" {% if stages and stages[0].adv_min_performance == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <fieldset class="help-anchor">
+        <legend>Problems</legend>
+        {% call tip("Problems") %}
+          <p>Horizontal writes each fact on one line, such as 3 + 4. Vertical stacks the numbers with the answer line underneath. Every new sheet in this plan uses this direction.</p>
+        {% endcall %}
+        <div class="choices-vertical">
+          <label class="choice"><input type="radio" name="orientation" value="horizontal" {% if plan.default_orientation != 'vertical' %}checked{% endif %}> <span>Horizontal</span></label>
+          <label class="choice"><input type="radio" name="orientation" value="vertical" {% if plan.default_orientation == 'vertical' %}checked{% endif %}> <span>Vertical</span></label>
+        </div>
+      </fieldset>
+      <button type="submit" class="button secondary">Save plan options</button>
+    </form>
+  {% endif %}
+</section>
+
+<ol class="plan-path">
+  {% for stage in stages %}
+    {% set op = stage.operation or plan.operation %}
+    <li class="plan-step" id="stage-{{ stage.id }}">
+      <div class="plan-marker" aria-hidden="true">{{ loop.index }}</div>
+      <article class="card plan-card">
+        <div class="plan-card-head">
+          <span class="plan-symbol">{{ symbols[op] }}</span>
+          <div>
+            <h2>{{ stage.name }}</h2>
+            <p class="plan-facts">
+              {% if stage.a_spec.strip() and stage.b_spec.strip() %}
+                {{ stage.a_spec }} {{ symbols[op] }} {{ stage.b_spec }}
+                {% if stage.include_reverse and op in ('add', 'mul') %} · both orders{% endif %}
+              {% else %}
+                Numbers not set yet
+              {% endif %}
+            </p>
+            <p class="plan-rule">{{ stage.min_sheets }} {{ 'sheet' if stage.min_sheets == 1 else 'sheets' }} before moving on. The last one must be {{ bars[stage.adv_min_performance] }}.</p>
+          </div>
+        </div>
+        {% if not readonly %}
+          <details class="plan-edit" {% if request.args.get('open') == stage.id|string or not stage.a_spec.strip() or not stage.b_spec.strip() %}open{% endif %}>
+            <summary>Edit this stage</summary>
+            <form method="post" action="{{ url_for('plans.editor', plan_id=plan.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="action" value="save">
+              <input type="hidden" name="stage_id" value="{{ stage.id }}">
+              <div class="field-head">
+                <label for="stage-name-{{ stage.id }}">Name</label>
+                {% call tip("Name") %}
+                  <p>The name on this stage card and on the student’s plan. A new stage is named Stage 1, Stage 2, and so on until you change it.</p>
+                {% endcall %}
+              </div>
+              <input id="stage-name-{{ stage.id }}" name="stage_name" value="{{ stage.name }}">
+              <fieldset class="help-anchor">
+                <legend>Operation</legend>
+                {% call tip("Operation") %}
+                  <p>The kind of facts on this stage: addition, subtraction, multiplication, or division. Each stage can use a different operation.</p>
+                {% endcall %}
+                <div class="choices">
+                  {% for key in ('add', 'sub', 'mul', 'div') %}
+                    <label class="choice">
+                      <input type="radio" name="operation" value="{{ key }}" {% if op == key %}checked{% endif %}>
+                      <span>{{ symbols[key] }} {{ operations[key] }}</span>
+                    </label>
+                  {% endfor %}
+                </div>
+              </fieldset>
+              <div class="filter-grid">
+                <div class="field">
+                  <div class="field-head">
+                    <label for="stage-a-{{ stage.id }}">Operand A</label>
+                    {% call tip("Operand A") %}
+                      <p>The first number in each fact. Use a range such as 0-12, a list such as 2,5, or a single number such as 4.</p>
+                    {% endcall %}
+                  </div>
+                  <input id="stage-a-{{ stage.id }}" name="a_spec" value="{{ stage.a_spec }}">
+                </div>
+                <div class="field">
+                  <div class="field-head">
+                    <label for="stage-b-{{ stage.id }}">Operand B</label>
+                    {% call tip("Operand B") %}
+                      <p>The second number in each fact. Use a range such as 0-12, a list such as 0,1, or a single number such as 3. A new stage starts with no numbers until you fill these in.</p>
+                    {% endcall %}
+                  </div>
+                  <input id="stage-b-{{ stage.id }}" name="b_spec" value="{{ stage.b_spec }}">
+                </div>
+              </div>
+              <div class="check-line">
+                <label class="check">
+                  <input type="checkbox" name="include_reverse" {% if stage.include_reverse %}checked{% endif %}>
+                  <span>Both orders. Used for addition and multiplication.</span>
+                </label>
+                {% call tip("Both orders") %}
+                  <p>For addition and multiplication, also include the swapped fact. 3 + 4 and 4 + 3 both appear. Subtraction and division ignore this.</p>
+                {% endcall %}
+              </div>
+              <div class="filter-grid">
+                <div class="field">
+                  <div class="field-head">
+                    <label for="stage-min-{{ stage.id }}">Sheets before moving on</label>
+                    {% call tip("Sheets before moving on") %}
+                      <p>The minimum number of finished sheets on this stage. Sheets before that number only count toward the minimum. Once it is met, only the last sheet is checked. Meet the bar and the student moves to the next stage. Miss it and they stay, and the next sheet is checked the same way. A sheet finished with an aid still counts. A new stage starts at 3, or at the number already set on the plan.</p>
+                    {% endcall %}
+                  </div>
+                  <input id="stage-min-{{ stage.id }}" name="min_sheets" type="number" min="1" max="20" value="{{ stage.min_sheets }}">
+                </div>
+                <div class="field">
+                  <div class="field-head">
+                    <label for="stage-bar-{{ stage.id }}">Last sheet must be</label>
+                    {% call tip("Last sheet must be") %}
+                      <p>The bar for that last sheet. Good or better is the usual bar. This is checked only after the minimum number of sheets is finished.</p>
+                    {% endcall %}
+                  </div>
+                  <select id="stage-bar-{{ stage.id }}" name="performance">
+                    {% for value, label in bars.items() %}
+                      <option value="{{ value }}" {% if stage.adv_min_performance == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="field">
+                  <div class="field-head">
+                    <label for="stage-pair-{{ stage.id }}">Pair rule</label>
+                    {% call tip("Pair rule") %}
+                      <p>Any pair uses every combination of the two number ranges. This is the usual choice, and a new stage starts here.</p>
+                      <p>Sum at most keeps only pairs whose total is at or below the Sum limit. With a limit of 10, 7 + 3 stays and 7 + 5 does not. The standard plans do not use this.</p>
+                      <p>Doubles makes one fact per first number, with the second number equal to it, such as 4 + 4 or 7 + 7.</p>
+                    {% endcall %}
+                  </div>
+                  <select id="stage-pair-{{ stage.id }}" name="pair_rule">
+                    <option value="any" {% if stage.pair_rule == 'any' %}selected{% endif %}>Any pair</option>
+                    <option value="sum_max" {% if stage.pair_rule == 'sum_max' %}selected{% endif %}>Sum at most</option>
+                    <option value="operands_equal" {% if stage.pair_rule == 'operands_equal' %}selected{% endif %}>Doubles</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <div class="field-head">
+                    <label for="stage-limit-{{ stage.id }}">Sum limit</label>
+                    {% call tip("Sum limit") %}
+                      <p>The largest total kept when Pair rule is Sum at most. Leave this blank for any other pair rule. A blank limit is ignored, and a new stage starts blank. The standard plans leave it blank.</p>
+                    {% endcall %}
+                  </div>
+                  <input id="stage-limit-{{ stage.id }}" name="pair_rule_limit" value="{{ stage.pair_rule_limit or '' }}">
+                </div>
+                <div class="field">
+                  <div class="field-head">
+                    <label for="stage-review-{{ stage.id }}">Review %</label>
+                    {% call tip("Review %") %}
+                      <p>The share of the sheet filled with facts from earlier stages. 20 means about 1 space in 5. On a sheet of 20 problems, about 4 spaces use an earlier stage and the rest come from this stage. A new stage starts at 20. The first stage has no earlier stages, so this number has no effect there.</p>
+                    {% endcall %}
+                  </div>
+                  <input id="stage-review-{{ stage.id }}" name="review_mix_pct" value="{{ stage.review_mix_pct }}">
+                </div>
+              </div>
+              <div class="check-line">
+                <label class="check"><input type="checkbox" name="mixed" {% if stage.mixed %}checked{% endif %}> <span>This stage can earn Mix Master</span></label>
+                {% call tip("Mix Master") %}
+                  <p>Check this on a stage that reviews several fact sets together. A Good or better sheet here earns the Mix Master badge. The problems stay whatever you set above. Review % is what mixes facts from earlier stages onto the sheet. A new stage leaves this off.</p>
+                {% endcall %}
+              </div>
+              <button type="submit" class="button">Save stage</button>
+            </form>
+          </details>
+          <form method="post" class="plan-order" action="{{ url_for('plans.editor', plan_id=plan.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="stage_id" value="{{ stage.id }}">
+            <div class="order-action">
+              <button type="submit" name="action" value="up" class="button secondary">Move Up</button>
+              {% call tip("Move Up") %}
+                <p>Moves this stage earlier in the plan, one place toward the top.</p>
+              {% endcall %}
+            </div>
+            <div class="order-action">
+              <button type="submit" name="action" value="down" class="button secondary">Move Down</button>
+              {% call tip("Move Down") %}
+                <p>Moves this stage later in the plan, one place toward the bottom.</p>
+              {% endcall %}
+            </div>
+            <div class="order-action">
+              <button type="submit" name="action" value="remove" class="button secondary">Remove</button>
+              {% call tip("Remove") %}
+                <p>Deletes this stage and closes up the numbers. A plan keeps its last stage. A stage a student is on right now stays until that student is on a different stage.</p>
+              {% endcall %}
+            </div>
+          </form>
+        {% endif %}
+      </article>
+    </li>
+  {% endfor %}
+  {% if not readonly %}
+    <li class="plan-step" id="add-stage">
+      <div class="plan-marker plan-marker-add" aria-hidden="true">+</div>
+      <form method="post" class="card plan-card plan-add" action="{{ url_for('plans.editor', plan_id=plan.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="field-head">
+          <button type="submit" name="action" value="add" class="button">Add a stage</button>
+          {% call tip("Add a stage") %}
+            <p>Adds a card at the end of the plan. It starts as any pair, with no sum limit, 20% review, and Mix Master off. Move Up and Move Down change its place.</p>
+          {% endcall %}
+        </div>
+        <p class="hint">The new stage is added at the end.</p>
+      </form>
+    </li>
+  {% endif %}
+</ol>
+{% endblock %}

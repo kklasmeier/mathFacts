@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}Progress{% endblock %}
+{% block content %}
+{% include "_child_bar.html" %}
+<h1>Progress · {{ child.name }}</h1>
+<nav class="admin-nav" aria-label="Progress">
+  {% for name in tabs %}
+    <a href="{{ url_for('progress.show', child_id=child.id, tab=name, range=range_key, op=operation) }}">{{ name|replace('_', ' ')|title }}</a>
+  {% endfor %}
+</nav>
+<form method="get" class="card filters">
+  <input type="hidden" name="tab" value="{{ tab }}">
+  <div class="filter-grid">
+    <label>Range
+      <select name="range">
+        {% for key, label in ranges.items() %}
+          <option value="{{ key }}" {% if key == range_key %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Operation
+      <select name="op">
+        <option value="">All</option>
+        {% for key, label in operations.items() %}
+          <option value="{{ key }}" {% if key == operation %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  </div>
+  <button type="submit" class="button">Apply</button>
+</form>
+
+{% if tab == 'overview' %}
+  <section class="card">
+    <p>{{ overview.week }} this week · {{ overview.month }} this month · {{ overview.total }} in this range</p>
+    <p>{% if overview.average is not none %}Average performance {{ overview.average }}{% else %}No finished sheets in this range.{% endif %}</p>
+    <p>{{ overview.streak }} weeks practiced in a row · {{ badge_count }} badges earned</p>
+    <p class="week-strip" aria-label="This week">
+      {% for day in overview.week_days %}
+        <span class="day-chip {% if day in overview.practiced_days %}day-on{% endif %}">{{ day[-2:] }}</span>
+      {% endfor %}
+    </p>
+    {% for card in journey %}
+      <p>{{ card.operation }}: {{ card.stages|selectattr('id', 'equalto', card.current)|map(attribute='name')|first }} · {{ card.sheets_done }} of {{ card.minimum }} sheets finished</p>
+    {% endfor %}
+  </section>
+{% elif tab == 'performance' %}
+  <section class="card">
+    <h2>Performance over time</h2>
+    <p class="hint">Squares are sheets finished with support. Circles were on their own.</p>
+    {% if series.points %}
+      <svg class="chart" viewBox="0 0 {{ series.width }} {{ series.height }}" role="img" aria-label="Performance over time">
+        <polyline points="{{ series.line }}" fill="none" />
+        {% for point in series.points %}
+          {% if point.aided %}
+            <rect x="{{ point.x - 3 }}" y="{{ point.y - 3 }}" width="6" height="6" />
+          {% else %}
+            <circle cx="{{ point.x }}" cy="{{ point.y }}" r="3" />
+          {% endif %}
+        {% endfor %}
+      </svg>
+    {% else %}
+      <p class="muted">No finished sheets in this range.</p>
+    {% endif %}
+    <h2>Rating mix</h2>
+    {% for bar in rating_stacks %}
+      <p>{{ bar.label }} · {{ bar.excellent }} excellent, {{ bar.good }} good, {{ bar.ok }} ok, {{ bar.low }} needs improvement</p>
+    {% endfor %}
+    <h2>By operation</h2>
+    {% for item in by_operation %}
+      <p>{{ item.label }}: {% if item.average is not none %}{{ item.average }} across {{ item.count }}{% else %}no sheets{% endif %}</p>
+    {% endfor %}
+  </section>
+{% elif tab == 'independence' %}
+  <section class="card">
+    <h2>Support over time</h2>
+    {% if note %}<p>{{ note }}</p>{% endif %}
+    {% for bar in support_stacks %}
+      <p>{{ bar.label }} · {{ bar.own }} on their own, {{ bar.some }} some help, {{ bar.aid }} aid throughout</p>
+    {% endfor %}
+    {% if not support_stacks %}<p class="muted">No finished sheets in this range.</p>{% endif %}
+  </section>
+{% elif tab == 'pace' %}
+  <section class="card">
+    <h2>Pace</h2>
+    {% if pace.points %}
+      <svg class="chart" viewBox="0 0 {{ pace.width }} {{ pace.height }}" role="img" aria-label="Pace over time">
+        <polyline points="{{ pace.line }}" fill="none" />
+        {% for point in pace.points %}
+          <circle cx="{{ point.x }}" cy="{{ point.y }}" r="3" />
+        {% endfor %}
+      </svg>
+    {% else %}
+      <p class="muted">No pace was recorded in this range.</p>
+    {% endif %}
+    <h2>{{ calendar.label }}</h2>
+    <div class="calendar">
+      {% for day in calendar.days %}
+        {% if day %}
+          <span class="day-chip day-{{ day.level }}">{{ day.n }}</span>
+        {% else %}
+          <span class="day-chip"></span>
+        {% endif %}
+      {% endfor %}
+    </div>
+    <h2>Sheets per week</h2>
+    {% for bar in weeks %}
+      <p>{{ bar.label }} · {{ bar.total }}</p>
+    {% endfor %}
+  </section>
+{% elif tab == 'journey' %}
+  {% for card in journey %}
+    <section class="card">
+      <h2>{{ card.name }}</h2>
+      <ol class="plan-path">
+        {% for stage in card.stages %}
+          {% set op = stage.operation or 'add' %}
+          <li class="plan-step {% if stage.id == card.current %}is-current{% elif stage.id in card.done_ids %}is-done{% endif %}">
+            <div class="plan-marker">{{ loop.index }}</div>
+            <div class="card plan-card">
+              <div class="plan-card-head">
+                <span class="plan-symbol">{{ symbols[op] }}</span>
+                <div>
+                  <h3>{{ stage.name }}</h3>
+                  <p class="plan-facts">{{ stage.a_spec }} {{ symbols[op] }} {{ stage.b_spec }}</p>
+                </div>
+              </div>
+              {% if stage.id == card.current and not card.finished %}
+                <p class="plan-rule">{{ card.sheets_done }} of {{ card.minimum }} sheets finished.</p>
+                <span class="pill">Current</span>
+              {% elif stage.id in card.done_ids %}
+                <span class="pill pill-good">Done</span>
+              {% endif %}
+            </div>
+          </li>
+        {% endfor %}
+      </ol>
+    </section>
+  {% endfor %}
+  {% if not journey %}<p class="muted">No plans yet.</p>{% endif %}
+  <h2>Milestones</h2>
+  <ul>
+    {% for event in milestones %}
+      <li>{{ event.text }}</li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <section class="card">
+    <h2>Fact coverage</h2>
+    <p class="hint">Approximate. A cell is the average of recent sheets that included that fact, not a score for the fact itself. A dot means a recent sheet used support.</p>
+    <div class="coverage">
+      {% for row in coverage %}
+        <div class="coverage-row">
+          {% for cell in row %}
+            <span class="fact fact-{{ cell.level }}">{% if cell.dot %}·{% endif %}</span>
+          {% endfor %}
+        </div>
+      {% endfor %}
+    </div>
+    <p><a href="{{ url_for('sheets.index', child=child.id) }}">Sheets</a> · <a href="{{ url_for('progress.badges_page', child_id=child.id) }}">Badges</a></p>
+  </section>
+{% endif %}
+{% endblock %}

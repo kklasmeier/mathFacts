@@ -28,10 +28,16 @@ def _cell(problem, layout, answers):
 
 
 def sheet_view(*, title, number, operation, orientation, cols, rows, problems,
-               font_pt, page_direction, name_line, date_line, answers, tight=False):
+               font_pt, page_direction, name_line, date_line, answers, tight=False,
+               badges=None, banner_more=0, stage_name=""):
+    footer = f"#{number:04d} · {OPERATIONS[operation]}"
+    if stage_name:
+        footer += f" · {stage_name}"
+    # The answer key never shows badges, even when the worksheet page does.
+    shown = [] if answers else list(badges or [])
     return {
         "title": title,
-        "footer": f"#{number:04d} · {OPERATIONS[operation]}",
+        "footer": footer,
         "name_line": name_line,
         "date_line": date_line,
         "page": page_direction,
@@ -40,5 +46,7 @@ def sheet_view(*, title, number, operation, orientation, cols, rows, problems,
         "rows_class": f"rows-{rows}",
         "answers": answers,
         "tight": tight,
+        "badges": shown,
+        "banner_more": 0 if answers else banner_more,
         "cells": [_cell(p, orientation, answers) for p in problems],
     }

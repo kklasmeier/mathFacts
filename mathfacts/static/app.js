@@ -134,7 +134,39 @@
     });
   }
 
+  function initDropdowns() {
+    var menus = Array.prototype.slice.call(document.querySelectorAll("details.dropdown"));
+    if (!menus.length) {
+      return;
+    }
+    function closeAll(except) {
+      menus.forEach(function (menu) {
+        if (menu !== except) {
+          menu.removeAttribute("open");
+        }
+      });
+    }
+    menus.forEach(function (menu) {
+      menu.addEventListener("toggle", function () {
+        if (menu.open) {
+          closeAll(menu);
+        }
+      });
+    });
+    document.addEventListener("click", function (event) {
+      if (!event.target.closest("details.dropdown")) {
+        closeAll(null);
+      }
+    });
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") {
+        closeAll(null);
+      }
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
+    initDropdowns();
     scaleSheets(document);
     initBuilder();
     initAidField();

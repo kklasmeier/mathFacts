@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Delete {{ plan.name }}{% endblock %}
+{% block content %}
+<h1>Delete {{ plan.name }}?</h1>
+<section class="card">
+  <p>The plan is removed from your library. Students stop receiving new sheets from it. Sheets already printed stay.</p>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="row">
+      <button type="submit" class="button">Delete plan</button>
+      <a class="button secondary" href="{{ url_for('plans.library') }}">Keep it</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

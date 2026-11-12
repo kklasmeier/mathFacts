@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Plans{% endblock %}
+{% block content %}
+{% include "_child_bar.html" %}
+<div class="page-head">
+  <h1>{{ child.name }}'s plans</h1>
+  <a class="button" href="{{ url_for('plans.library') }}">Plans</a>
+</div>
+{% if not cards %}
+  <p class="muted">No plans assigned yet. Assign one from your plans.</p>
+{% endif %}
+{% for card in cards %}
+  <section class="card">
+    <h2>{{ operations[card.row.operation] }} · {{ card.row.plan_name }}</h2>
+    <p>Current stage: {{ card.row.stage_name }}{% if card.row.finished %} · Plan complete{% endif %}</p>
+    <p class="muted">{{ card.done }} of {{ card.minimum }} sheets finished on this stage.{% if card.done >= card.minimum %} The last sheet {% if card.last_ok %}meets the bar.{% else %}is below the bar.{% endif %}{% endif %}</p>
+    {% if card.row.operation == 'div' %}
+      <p class="hint">Matching multiplication first is a useful head start. It is not required.</p>
+    {% endif %}
+    {% if card.ready %}
+      <p><strong>Ready to advance.</strong></p>
+    {% endif %}
+    <ol class="plan-path">
+      {% for stage in card.stages %}
+        {% set op = stage.operation or card.row.operation %}
+        <li class="plan-step {% if stage.id == card.row.current_stage_id %}is-current{% endif %}">
+          <div class="plan-marker">{{ loop.index }}</div>
+          <div class="card plan-card">
+            <div class="plan-card-head">
+              <span class="plan-symbol">{{ symbols[op] }}</span>
+              <div>
+                <h3>{{ stage.name }}</h3>
+                <p class="plan-facts">
+                  {% if stage.a_spec.strip() and stage.b_spec.strip() %}
+                    {{ stage.a_spec }} {{ symbols[op] }} {{ stage.b_spec }}
+                    {% if stage.include_reverse and op in ('add', 'mul') %} · both orders{% endif %}
+                  {% else %}
+                    Numbers not set yet
+                  {% endif %}
+                </p>
+                <p class="plan-rule">{{ stage.min_sheets }} {{ 'sheet' if stage.min_sheets == 1 else 'sheets' }} before moving on. The last one must be {{ bars[stage.adv_min_performance] }}.</p>
+              </div>
+            </div>
+            {% if stage.id == card.row.current_stage_id and not card.row.finished %}
+              <span class="pill">Current</span>
+            {% endif %}
+          </div>
+        </li>
+      {% endfor %}
+    </ol>
+    <div class="actions">
+      {% if not card.row.finished %}
+        <a class="button" href="{{ url_for('sheets.new_sheet', child=child.id, stage=card.row.current_stage_id) }}">Next sheet</a>
+      {% endif %}
+      {% if card.ready %}
+        <form method="post" action="{{ url_for('plans.plan_action', child_id=child.id, plan_id=card.row.plan_id, action='advance') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="button secondary">Advance</button>
+        </form>
+        <form method="post" action="{{ url_for('plans.plan_action', child_id=child.id, plan_id=card.row.plan_id, action='repeat') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="button secondary">Repeat this stage</button>
+        </form>
+        <form method="post" action="{{ url_for('plans.plan_action', child_id=child.id, plan_id=card.row.plan_id, action='snooze') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="button secondary">Not yet</button>
+        </form>
+      {% endif %}
+      <a class="button secondary" href="{{ url_for('plans.editor', plan_id=card.row.plan_id) }}">Edit stages</a>
+    </div>
+    {% if not card.row.finished %}
+      <form method="post" action="{{ url_for('plans.plan_action', child_id=child.id, plan_id=card.row.plan_id, action='move') }}" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label>Move to another stage
+          <select name="stage_id">
+            {% for stage in card.stages %}
+              <option value="{{ stage.id }}" {% if stage.id == card.row.current_stage_id %}selected{% endif %}>{{ stage.position }}. {{ stage.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <button type="submit" class="button secondary">Move</button>
+      </form>
+    {% endif %}
+    <form method="post" action="{{ url_for('plans.plan_action', child_id=child.id, plan_id=card.row.plan_id, action='remove') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="button secondary">Remove</button>
+    </form>
+  </section>
+{% endfor %}
+{% endblock %}

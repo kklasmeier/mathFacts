@@ -21,6 +21,20 @@ def test_home_shows_name_when_signed_in(signed_in_client):
     assert b"Welcome, Kim" in response.data
 
 
+def test_header_groups_account_items_in_the_name_menu(signed_in_client, db):
+    signed_in_client.post("/children/new", data={"name": "Alex", "grade": "2", "color": "blue"})
+    page = signed_in_client.get("/").get_data(as_text=True)
+    header = page.split("<main", 1)[0]
+    primary = header.split('class="primary-nav"', 1)[1].split("</nav>", 1)[0]
+    assert "Home" in primary and "Sheets" in primary and "New sheet" in primary
+    assert "Password" not in primary and "Light" not in primary
+    account = header.split('class="dropdown account-menu"', 1)[1].split("</details>", 1)[0]
+    for item in ("Profile", "Change password", "Plans", "Admin", "Match device", "Sign out"):
+        assert item in account
+    child = header.split('class="dropdown child-menu"', 1)[1].split("</details>", 1)[0]
+    assert "Alex" in child and "Manage children" in child
+
+
 def test_security_headers_present(client):
     response = client.get("/health")
     assert "frame-ancestors 'none'" in response.headers["Content-Security-Policy"]

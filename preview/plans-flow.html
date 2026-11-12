@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plan flow sketch · Math Facts</title>
+<style>
+  :root {
+    --bg: #f6f7fb; --surface: #fff; --surface-2: #eef1f8; --text: #1d2433;
+    --muted: #5b6478; --accent: #2f6fdb; --accent-text: #fff; --border: #d5dbe8;
+    --notice: #1f5f3a; --notice-bg: #e6f4ec; --error: #b42318; --error-bg: #fdecea;
+    --shadow: 0 1px 3px rgba(20,30,60,.08), 0 8px 24px rgba(20,30,60,.06);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.5 system-ui, sans-serif; color: var(--text); background: var(--bg); }
+  a { color: var(--accent); }
+  header { background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 5; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 1rem; }
+  .bar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; padding: .6rem 0; }
+  .brand { font-weight: 700; color: var(--text); text-decoration: none; margin-right: auto; }
+  nav a, .jump button { color: var(--muted); background: none; border: 0; font: inherit; font-weight: 600; padding: .4rem .7rem; border-radius: 8px; cursor: pointer; text-decoration: none; }
+  nav a.on, .jump button.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  main { padding: 1.25rem 0 3rem; }
+  h1 { font-size: 1.6rem; margin: 0 0 .4rem; }
+  h2 { font-size: 1.15rem; margin: 0; }
+  h3 { font-size: 1.05rem; margin: 0; }
+  .muted { color: var(--muted); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); padding: 1.1rem 1.25rem; margin: 0 0 .9rem; }
+  .row { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
+  .spread { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; flex-wrap: wrap; }
+  .button, button.button { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: .55rem 1rem; border-radius: 10px; border: 0; background: var(--accent); color: var(--accent-text); font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; }
+  .secondary { background: var(--surface-2); color: var(--text); }
+  .danger { background: var(--error); color: #fff; }
+  label { display: flex; flex-direction: column; gap: .25rem; font-weight: 600; margin: 0 0 .8rem; }
+  input, select { font: inherit; font-weight: 400; min-height: 44px; padding: .5rem .7rem; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); width: 100%; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: .75rem; }
+  .choices { display: flex; flex-wrap: wrap; gap: .35rem; }
+  .choice { display: flex; align-items: center; gap: .4rem; font-weight: 400; min-height: 40px; margin: 0; }
+  .pill { display: inline-flex; align-items: center; padding: .1rem .6rem; border-radius: 999px; font-size: .85rem; font-weight: 600; background: var(--surface-2); color: var(--muted); }
+  .pill-good { background: var(--notice-bg); color: var(--notice); }
+  .pill-issued { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+  .sketch { background: #fff8e8; border: 1px solid #e6d3a1; color: #5c4a1f; border-radius: 10px; padding: .7rem .9rem; margin-bottom: 1rem; }
+  .jump { display: flex; flex-wrap: wrap; gap: .25rem; margin: .4rem 0 0; }
+  .screen { display: none; }
+  .screen.on { display: block; }
+  .plan-path { list-style: none; margin: .6rem 0 0; padding: 0; }
+  .plan-step { display: grid; grid-template-columns: 2.6rem minmax(0, 1fr); column-gap: .7rem; position: relative; }
+  .plan-step:not(:last-child)::before { content: ""; position: absolute; left: 1.2rem; top: 2.7rem; bottom: 0; width: 2px; background: var(--border); }
+  .marker { width: 2.4rem; height: 2.4rem; margin-top: .85rem; border-radius: 999px; display: flex; align-items: center; justify-content: center; font-weight: 700; background: var(--accent); color: #fff; position: relative; z-index: 1; }
+  .marker.add { background: var(--surface); color: var(--accent); border: 2px dashed var(--accent); }
+  .is-current .stage-card { border-color: var(--accent); }
+  .is-done .marker { background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
+  .stage-card { margin: 0 0 .75rem; }
+  .head { display: flex; gap: .7rem; align-items: flex-start; }
+  .op { font-size: 1.5rem; font-weight: 700; line-height: 1; min-width: 1.4rem; }
+  .mini { display: flex; flex-wrap: wrap; gap: .3rem; margin: .45rem 0; }
+  .dot { width: 1.7rem; height: 1.7rem; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; font-size: .8rem; font-weight: 700; background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
+  .dot.now { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .dot.done { background: var(--notice-bg); color: var(--notice); border-color: transparent; }
+  .split { display: grid; grid-template-columns: 1.3fr .9fr; gap: .9rem; }
+  .sheet-side { border: 1px solid var(--border); border-radius: 12px; padding: .9rem 1rem; background: var(--surface-2); }
+  .locked { background: var(--bg); border-radius: 10px; padding: .7rem .9rem; }
+  .locked div { display: flex; justify-content: space-between; gap: 1rem; padding: .25rem 0; border-bottom: 1px solid var(--border); }
+  .locked div:last-child { border-bottom: 0; }
+  .childbar { display: flex; gap: .4rem; align-items: center; margin: 0 0 1rem; padding-bottom: .4rem; border-bottom: 1px solid var(--border); }
+  .childbar button { background: none; border: 0; font: inherit; font-weight: 600; color: var(--muted); min-height: 40px; padding: 0 .7rem; border-radius: 8px; cursor: pointer; }
+  .childbar button.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .childbar strong { margin-right: auto; }
+  fieldset { border: 1px solid var(--border); border-radius: 10px; margin: 0 0 .8rem; }
+  legend { font-weight: 600; padding: 0 .3rem; }
+  @media (max-width: 720px) { .split { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap bar">
+    <a class="brand" href="#" data-go="home">Math Facts</a>
+    <nav>
+      <a href="#" data-go="home" id="nav-home">Home</a>
+      <a href="#" data-go="library" id="nav-plans">Plans</a>
+    </nav>
+    <span class="pill">Alex</span>
+    <span class="pill">Kevin</span>
+  </div>
+</header>
+<main class="wrap">
+  <div class="sketch">
+    <strong>Sketch only.</strong> Plans belong to you. A student works one after you assign it. Click the steps.
+    <div class="jump" id="jumps"></div>
+  </div>
+
+  <section class="screen" id="library">
+    <div class="spread">
+      <div>
+        <h1>Plans</h1>
+        <p class="muted">These are yours. Assign a plan when a student should start working it.</p>
+      </div>
+      <button class="button" data-go="editor" data-mode="new">New plan</button>
+    </div>
+    <article class="card">
+      <div class="spread">
+        <div>
+          <h2>Multiplication through 12</h2>
+          <p class="muted">14 stages · 5 across × 4 down · Horizontal problems</p>
+          <p class="muted">At least 3 sheets. The last one must be Good or better.</p>
+          <p><span class="pill pill-good">Assigned to Alex</span></p>
+        </div>
+        <div class="row">
+          <button class="button secondary" data-go="editor" data-mode="edit">Edit</button>
+          <button class="button secondary" data-go="assign">Assign</button>
+          <button class="button secondary" data-go="delete">Delete</button>
+        </div>
+      </div>
+    </article>
+    <article class="card">
+      <div class="spread">
+        <div>
+          <h2>Addition facts</h2>
+          <p class="muted">6 stages · 5 across × 4 down · Horizontal problems</p>
+          <p class="muted">At least 3 sheets. The last one must be Good or better.</p>
+          <p><span class="pill">Not assigned</span></p>
+        </div>
+        <div class="row">
+          <button class="button secondary" data-go="editor" data-mode="edit">Edit</button>
+          <button class="button secondary" data-go="assign">Assign</button>
+          <button class="button secondary" data-go="delete">Delete</button>
+        </div>
+      </div>
+    </article>
+    <p class="muted">A standard plan can be copied in here, then edited as your own.</p>
+  </section>
+
+  <section class="screen" id="editor">
+    <h1 id="editor-title">New plan</h1>
+    <p class="muted">Set the sheet once. Then add the stages in order. The path below is the plan.</p>
+    <section class="card">
+      <h2>Plan options</h2>
+      <label>Name <input value="Multiplication through 12"></label>
+      <div class="grid">
+        <label>Problems across <input type="number" value="5"></label>
+        <label>Problems down <input type="number" value="4"></label>
+      </div>
+      <fieldset>
+        <legend>Problems</legend>
+        <div class="choices">
+          <label class="choice"><input type="radio" name="layout" checked> Horizontal</label>
+          <label class="choice"><input type="radio" name="layout"> Vertical</label>
+        </div>
+      </fieldset>
+      <div class="grid">
+        <label>Sheets before moving on <input type="number" value="3"></label>
+        <label>The last sheet must be
+          <select><option>Good or better</option><option>Excellent</option><option>OK or better</option></select>
+        </label>
+      </div>
+      <p class="muted">This is the minimum finished sheets on every stage. After that, only the last sheet is checked. Meet the bar and the student moves on. Miss it and they stay. A sheet finished with an aid still counts.</p>
+    </section>
+    <p class="muted" id="remove-note" hidden>A plan keeps at least one stage.</p>
+    <ol class="plan-path" id="stage-list">
+      <li class="plan-step">
+        <div class="marker">1</div>
+        <article class="card stage-card">
+          <div class="head"><span class="op">×</span><div>
+            <h2>×2</h2>
+            <p>0–12 × 2 · both orders</p>
+            <p class="muted">At least 3 sheets. The last one must be Good or better.</p>
+          </div></div>
+          <div class="row">
+            <button class="button secondary" type="button">Move Up</button>
+            <button class="button secondary" type="button">Move Down</button>
+            <button class="button secondary remove-stage" type="button">Remove</button>
+          </div>
+        </article>
+      </li>
+      <li class="plan-step">
+        <div class="marker">2</div>
+        <article class="card stage-card">
+          <div class="head"><span class="op">×</span><div>
+            <h2>×3</h2>
+            <p>0–12 × 3</p>
+            <p class="muted">At least 3 sheets. The last one must be Good or better.</p>
+          </div></div>
+          <div class="row">
+            <button class="button secondary" type="button">Move Up</button>
+            <button class="button secondary" type="button">Move Down</button>
+            <button class="button secondary remove-stage" type="button">Remove</button>
+          </div>
+          <details open>
+            <summary>Edit this stage</summary>
+            <fieldset>
+              <legend>Operation</legend>
+              <div class="choices">
+                <label class="choice"><input type="radio" name="op"> +</label>
+                <label class="choice"><input type="radio" name="op"> −</label>
+                <label class="choice"><input type="radio" name="op" checked> ×</label>
+                <label class="choice"><input type="radio" name="op"> ÷</label>
+              </div>
+            </fieldset>
+            <div class="grid">
+              <label>Operand A <input value="0-12"></label>
+              <label>Operand B <input value="3"></label>
+            </div>
+            <label class="choice"><input type="checkbox"> Both orders</label>
+            <button class="button">Save stage</button>
+          </details>
+        </article>
+      </li>
+      <li class="plan-step add-step">
+        <div class="marker add">+</div>
+        <article class="card stage-card">
+          <button class="button">Add a stage</button>
+          <p class="muted">The new card is added at the end. Move Up and Move Down change its place.</p>
+        </article>
+      </li>
+    </ol>
+    <div class="row">
+      <button class="button" data-go="library">Save plan</button>
+      <button class="button secondary" data-go="library">Cancel</button>
+    </div>
+  </section>
+
+  <section class="screen" id="assign">
+    <h1>Assign Multiplication through 12</h1>
+    <p class="muted">The student starts at stage 1. The first sheet is ready as soon as you assign the plan.</p>
+    <section class="card">
+      <label class="choice"><input type="checkbox" checked disabled> Alex · already working this plan, on stage 5</label>
+      <label class="choice"><input type="checkbox"> Sam · will start at stage 1</label>
+      <button class="button" data-go="home">Assign</button>
+    </section>
+  </section>
+
+  <section class="screen" id="delete">
+    <h1>Delete Addition facts?</h1>
+    <section class="card">
+      <p>The plan is removed from your library. Alex stops receiving new sheets from it. Sheets already printed stay in the history.</p>
+      <div class="row">
+        <button class="button danger" data-go="library">Delete plan</button>
+        <button class="button secondary" data-go="library">Keep it</button>
+      </div>
+    </section>
+  </section>
+
+  <section class="screen" id="home">
+    <div class="childbar">
+      <strong>Alex · Grade 3</strong>
+      <button class="on" data-go="home">Home</button>
+      <button data-go="student">Plans</button>
+    </div>
+    <h1>Alex</h1>
+    <h2>Assigned plans</h2>
+    <article class="card">
+      <div class="split">
+        <div>
+          <h2>Multiplication through 12</h2>
+          <p id="stage-line">Stage 5 of 14 · ×3</p>
+          <div class="mini" id="mini"></div>
+          <p class="muted" id="progress-line">2 sheets finished. This is sheet 3 of the stage. The last sheet decides.</p>
+        </div>
+        <div class="sheet-side" id="sheet-slot"></div>
+      </div>
+    </article>
+    <h2>Sheets outside a plan</h2>
+    <article class="card">
+      <div class="spread">
+        <div>
+          <strong>Multiplication</strong>
+          <p class="muted">1–9 × 2, 3 · Sheet #0008 · Nov 9</p>
+          <span class="pill pill-good">Good</span>
+        </div>
+        <button class="button secondary" data-go="sheet" data-free="1">Open</button>
+      </div>
+    </article>
+    <button class="button" id="one-off">New one-off sheet</button>
+  </section>
+
+  <section class="screen" id="student">
+    <div class="childbar">
+      <strong>Alex · Grade 3</strong>
+      <button data-go="home">Home</button>
+      <button class="on" data-go="student">Plans</button>
+    </div>
+    <h1>Alex’s plans</h1>
+    <p class="muted">Where Alex is in each plan you assigned. One-off sheets are listed under that.</p>
+    <article class="card">
+      <h2>Multiplication through 12</h2>
+      <p id="student-stage">Current stage: ×3 · stage 3 of 14</p>
+      <ol class="plan-path" id="student-path"></ol>
+    </article>
+    <h2>Sheets outside a plan</h2>
+    <article class="card">
+      <p><strong>#0008 · Multiplication · 1–9 × 2, 3</strong></p>
+      <p class="muted">Made on its own. It does not move a plan.</p>
+    </article>
+  </section>
+
+  <section class="screen" id="sheet">
+    <h1 id="sheet-title">Sheet #0014</h1>
+    <p class="muted" id="sheet-from">From Multiplication through 12 · Stage 5 · ×3</p>
+    <section class="card">
+      <h2>Problems</h2>
+      <p class="muted">A short stand-in for the printed page. 20 problems, 5 across and 4 down.</p>
+      <p style="font-size:1.3rem; letter-spacing:.04em;">4 × 3 &nbsp;&nbsp; 7 × 3 &nbsp;&nbsp; 12 × 3 &nbsp;&nbsp; 1 × 3<br>9 × 3 &nbsp;&nbsp; 0 × 3 &nbsp;&nbsp; 5 × 3 &nbsp;&nbsp; 8 × 3</p>
+    </section>
+    <section class="card">
+      <h2>Parameters</h2>
+      <p class="muted">Shown here so you can check them. They stay as the plan set them.</p>
+      <div class="locked" id="params"></div>
+      <div class="row" style="margin-top:.8rem">
+        <button class="button">Print</button>
+        <button class="button secondary" id="regen">Regenerate</button>
+      </div>
+      <p class="muted" id="regen-note" hidden>New problems, same parameters, same sheet.</p>
+    </section>
+  </section>
+
+  <section class="screen" id="grade">
+    <h1>Grade sheet #0014</h1>
+    <p class="muted">×3 · from Multiplication through 12, stage 5 of 14. This is the 3rd sheet of the stage.</p>
+    <section class="card">
+      <label>Performance
+        <select id="perf"><option>Excellent</option><option selected>Good</option><option>OK</option><option>Needs improvement</option></select>
+      </label>
+      <label>Support
+        <select><option>On their own</option><option>Some help</option><option selected>Aid throughout</option></select>
+      </label>
+      <div class="row">
+        <button class="button" id="save-good">Save grade</button>
+      </div>
+      <p class="muted">Saving the grade prepares the next sheet. A Good or better result on this third sheet moves Alex to ×4 and that sheet is ready. A lower result keeps ×3 and a new ×3 sheet is ready.</p>
+    </section>
+  </section>
+</main>
+<script>
+const screens = ["library", "editor", "assign", "delete", "home", "student", "sheet", "grade"];
+const jumps = document.getElementById("jumps");
+const labels = {
+  library: "1 Plans",
+  editor: "2 Plan",
+  assign: "3 Assign",
+  delete: "4 Delete",
+  home: "5 Student home",
+  student: "6 Student plans",
+  sheet: "7 Sheet",
+  grade: "8 Grade"
+};
+screens.forEach(id => {
+  const b = document.createElement("button");
+  b.textContent = labels[id];
+  b.dataset.go = id;
+  jumps.appendChild(b);
+});
+
+let outcome = null;
+let regenerated = false;
+
+function dots(current) {
+  return Array.from({length: 14}, (_, i) => {
+    const n = i + 1;
+    const cls = n < current ? "done" : n === current ? "now" : "";
+    return `<span class="dot ${cls}">${n}</span>`;
+  }).join("");
+}
+
+function renderHome() {
+  const slot = document.getElementById("sheet-slot");
+  const stage = document.getElementById("stage-line");
+  const progress = document.getElementById("progress-line");
+  const mini = document.getElementById("mini");
+  if (outcome === "next-stage") {
+    stage.textContent = "Stage 6 of 14 · ×4";
+    progress.textContent = "The last sheet was Good. Alex moved to ×4. The new sheet is ready.";
+    mini.innerHTML = dots(6);
+    slot.innerHTML = sheetBox("0015", "0–12 × 4", "Stage 6 · ×4", true);
+  } else if (outcome === "same-stage") {
+    stage.textContent = "Stage 5 of 14 · ×3";
+    progress.textContent = "The last sheet was below the bar. Alex stays on ×3. A new sheet is ready.";
+    mini.innerHTML = dots(5);
+    slot.innerHTML = sheetBox("0015", "0–12 × 3", "Stage 5 · ×3", true);
+  } else {
+    stage.textContent = "Stage 5 of 14 · ×3";
+    progress.textContent = "2 sheets finished. This waiting sheet is the 3rd. The last sheet decides.";
+    mini.innerHTML = dots(5);
+    slot.innerHTML = sheetBox("0014", "0–12 × 3", "Stage 5 · ×3", false);
+  }
+  document.getElementById("student-stage").textContent =
+    outcome === "next-stage" ? "Current stage: ×4 · stage 6 of 14" : "Current stage: ×3 · stage 5 of 14";
+  const current = outcome === "next-stage" ? 6 : 5;
+  document.getElementById("student-path").innerHTML = [4, 5, 6, 7].map(n => {
+    const names = {4: "×10", 5: "×3", 6: "×4", 7: "×6"};
+    const cls = n < current ? "is-done" : n === current ? "is-current" : "";
+    const mark = n === current ? `<span class="pill">Current</span>` : n < current ? `<span class="pill pill-good">Done</span>` : "";
+    return `<li class="plan-step ${cls}"><div class="marker">${n}</div><div class="card stage-card"><h3>${names[n]}</h3>${mark}</div></li>`;
+  }).join("") + `<li class="plan-step"><div class="marker">…</div><div class="card stage-card"><p class="muted">Stages 1–3 are already behind Alex. Stages 8–14 run through mixed 0–12.</p></div></li>`;
+}
+
+function sheetBox(num, facts, where, fresh) {
+  return `
+    <p class="muted">Ready to print</p>
+    <h3>Sheet #${num}</h3>
+    <p>${facts}</p>
+    <p class="muted">${where}${fresh ? " · just prepared" : ""}</p>
+    <p><span class="pill pill-issued">Issued · not graded</span></p>
+    <div class="row">
+      <button class="button secondary" data-go="sheet" data-num="${num}" data-facts="${facts}" data-where="${where}">Open</button>
+      <button class="button secondary">Print</button>
+      <button class="button" data-go="grade">Grade</button>
+    </div>`;
+}
+
+function show(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.toggle("on", s.id === id));
+  document.querySelectorAll("[data-go]").forEach(el => {
+    if (el.closest("#jumps")) el.classList.toggle("on", el.dataset.go === id);
+  });
+  document.getElementById("nav-home").classList.toggle("on", id === "home" || id === "student" || id === "sheet" || id === "grade");
+  document.getElementById("nav-plans").classList.toggle("on", id === "library" || id === "editor" || id === "assign" || id === "delete");
+  if (id === "home" || id === "student") renderHome();
+}
+
+document.body.addEventListener("click", event => {
+  const t = event.target.closest("[data-go]");
+  if (!t) return;
+  event.preventDefault();
+  if (t.dataset.mode) {
+    document.getElementById("editor-title").textContent = t.dataset.mode === "new" ? "New plan" : "Edit plan";
+  }
+  if (t.dataset.num) {
+    document.getElementById("sheet-title").textContent = "Sheet #" + t.dataset.num;
+    document.getElementById("sheet-from").textContent = "From Multiplication through 12 · " + t.dataset.where;
+    const facts = t.dataset.facts || "0–12 × 3";
+    document.getElementById("params").innerHTML = `
+      <div><span>Operation</span><span>× Multiplication</span></div>
+      <div><span>Numbers</span><span>${facts}</span></div>
+      <div><span>Both orders</span><span>Off</span></div>
+      <div><span>Across × down</span><span>5 × 4</span></div>
+      <div><span>Problems</span><span>Horizontal</span></div>`;
+    regenerated = false;
+    document.getElementById("regen-note").hidden = true;
+  }
+  show(t.dataset.go);
+});
+
+document.getElementById("save-good").addEventListener("click", () => {
+  const perf = document.getElementById("perf").value;
+  outcome = (perf === "Good" || perf === "Excellent") ? "next-stage" : "same-stage";
+  show("home");
+});
+document.getElementById("regen").addEventListener("click", () => {
+  regenerated = true;
+  document.getElementById("regen-note").hidden = false;
+});
+document.getElementById("stage-list").addEventListener("click", event => {
+  const button = event.target.closest(".remove-stage");
+  if (!button) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const steps = [...document.querySelectorAll("#stage-list .plan-step:not(.add-step)")];
+  const note = document.getElementById("remove-note");
+  if (steps.length <= 1) {
+    note.hidden = false;
+    return;
+  }
+  note.hidden = true;
+  button.closest(".plan-step").remove();
+  document.querySelectorAll("#stage-list .plan-step:not(.add-step) .marker").forEach((marker, index) => {
+    marker.textContent = String(index + 1);
+  });
+});
+document.getElementById("one-off").addEventListener("click", () => {
+  document.getElementById("sheet-title").textContent = "New one-off sheet";
+  document.getElementById("sheet-from").textContent = "Not part of a plan. In the real app this opens the builder, where every setting can be changed.";
+  document.getElementById("params").innerHTML = `<div><span>Builder</span><span>You choose the operation, the numbers, and the layout.</span></div>`;
+  show("sheet");
+});
+
+show("library");
+</script>
+</body>
+</html>

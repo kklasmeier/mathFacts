@@ -14,6 +14,7 @@
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="seed" value="{{ v.seed }}">
   <input type="hidden" name="replace" value="{{ replace }}">
+  <input type="hidden" name="plan_stage_id" value="{{ v.plan_stage_id }}">
   {# First submit button in the form. Pressing Enter in a text field uses it, and it must not save. #}
   <button type="submit" name="action" value="refresh" class="sr-only" tabindex="-1" aria-hidden="true">Refresh preview</button>
 
@@ -100,6 +101,7 @@
     <label class="check"><input type="checkbox" name="name_line" {% if v.name_line %}checked{% endif %}> <span>Name line</span></label>
     <label class="check"><input type="checkbox" name="date_line" {% if v.date_line %}checked{% endif %}> <span>Date line</span></label>
     <label class="check"><input type="checkbox" name="answer_key" {% if v.answer_key %}checked{% endif %}> <span>Answer key (page 2)</span></label>
+    <label class="check"><input type="checkbox" name="badges_on" {% if v.badges_on %}checked{% endif %}> <span>Badges on sheet</span></label>
   </div>
 
   <fieldset>

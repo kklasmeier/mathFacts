@@ -1,6 +1,6 @@
 # Math Facts Worksheet Generator — Product Spec
 
-**Version:** 1.19 (draft)
+**Version:** 1.23 (draft)
 **Owner:** Kevin
 **Target platform:** Raspberry Pi (web app on the home network first; external hosting with HTTPS is Phase 2)
 **Primary language:** Python
@@ -352,7 +352,7 @@ Progress is tracked at the **sheet level** from ratings. The app does not know w
 - Stable `stage_key` (copied from the system template onto the account's plan, so badges can refer to the stage after the copy). A stage the parent adds gets a new key.
 - Operand A spec, Operand B spec, reverse-order flag (same syntax as the builder).
 - **Pair rule** (default `any`: the full cross-product). Two seeded stages need more than a cross-product:
-  - `sum_max` with a limit — keep only pairs whose sum is at most that limit. Used by addition "Sums to 10" (A=`0-10`, B=`0-10`, sum at most 10).
+  - `sum_max` with a limit — keep only pairs whose sum is at most that limit. A custom stage can use it. The standard plans do not.
   - `operands_equal` — one fact per value in A, with B set equal to A. The B spec is ignored. Used by addition "Doubles" (`1-9` + itself).
 - Recommended layout (orientation, across × down, page direction). These are the starting values when a sheet is made for the stage. Across is the number of columns, Down is the number of rows, and the number of problems on the page is across × down. The parent can change them for each sheet. That change does not rewrite the stage.
 - **Review mix:** percent of problems drawn from earlier stages' fact sets (default 20%, 0–50% configurable). Review facts are drawn at random from the pooled fact sets of all earlier stages in the plan (each earlier stage's pair rule already applied). The first stage has no earlier pool, so its mix contributes zero problems. Review slot count is `round(slots × percent / 100)`; the rest come from the current stage. If the review pool is smaller than the review slot count, those facts repeat evenly, same as the builder's pool-vs-slots rule. Overlap between the review pool and the current stage is allowed.
@@ -382,7 +382,7 @@ Progress is tracked at the **sheet level** from ratings. The app does not know w
 1. +0 and +1 (`0-9` + `0,1`)
 2. +2 (`0-9` + `2`)
 3. +3
-4. Sums to 10 (number bonds: A=`0-10`, B=`0-10`, pair rule `sum_max` 10)
+4. Facts 0–10 (A=`0-10`, B=`0-10`, any pair)
 5. +4, +5
 6. Doubles (`1-9`, pair rule `operands_equal`)
 7. +6, +7
@@ -2087,3 +2087,7 @@ Earlier drafts listed the items below as open. Each one was already answered in 
 - **1.17:** The font may go under 10pt. A dense page uses the fitted size instead of being held at 10pt. The builder remembers the last problem layout, page direction, across, down, and order for the account, and uses them as the defaults on the next new sheet. Printed sheets keep a tight 0.3in page margin plus a small inset so the problems are not flush with the edge. The vertical rule runs under the operator. The long-division bracket is one connected mark.
 - **1.18:** Slice 3 history and ratings. The sheet list filters by child, operation, status, date, support, and title or number. The stage filter stays hidden until plans exist. Clean up unfinished lists issued sheets at least 14 days old and deletes the checked ones after confirmation. Regenerate and Change and regenerate update an issued sheet in place. A finished sheet keeps its problems; Duplicate makes a new number. Rating requires performance and support, then marks the sheet completed. The advancement rule (2 of the last 3, aids count) is in the rating code. The ready banner, next-sheet buttons, badges, and the cleanup-age setting wait for later slices. Home shows the current child's unfinished count and five newest sheets.
 - **1.19:** Slice 4 administration. The administrator sees accounts with counts only, can inactivate and reactivate them, and can reset a password to the site temporary password or a single-use one. The temporary password is encrypted. A reset forces a new password and expires after the configured hours. Sign-in log and audit log are filterable, and the sign-in log exports to CSV. Site settings cover terms text, the child limit, log retention, idle timeout, remembered sign-in, and the temporary password. The plan library stays in Phase 1B. A command on the Pi, `python -m mathfacts.reset_password USERNAME`, resets an account when the administrator is locked out.
+- **1.20:** Slice 5 plans, progress, and badges. Standard plans are copied into the account. The wizard can start multiplication at ×3. Next sheet opens the builder and does not save until the parent does. A child can stay on one stage for many sheets. Advancement is 2 of the last 3 at Good or better, and sheets done with an aid count. Badges are awarded once. More than five pending badges print as four plus “+N more.” Deleting an issued sheet returns those badges to the next sheet. Deleting a finished sheet does not. Templates, custom badges, and the printable badge chart stay out.
+- **1.21:** A custom plan is an ordered path of stage cards. Each stage chooses +, −, ×, or ÷, and addition or multiplication can include both orders. The plan sets across, down, and spacing for every sheet. A stage lists a minimum number of finished sheets. Once that many are done, the last sheet’s rating moves the student to the next stage.
+- **1.22:** Plans belong to the parent and can be assigned to more than one student. Assigning starts the student at stage 1 and prepares that sheet. Home shows the plan beside the waiting sheet, with Open, Print, and Grade. Grading prepares the next sheet of the same stage, or the next stage when the last sheet clears the bar. A stage can be removed. Plan sheets can be printed and regenerated; their facts stay locked.
+- **1.23:** Each plan and stage setting has a help popup. A new stage defaults to any pair, no sum limit, and 20% review. The standard addition plan’s 0–10 stage includes every pair. Sum at most remains available on a custom stage.

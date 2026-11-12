@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>{{ title }}</h1>
+  <p>{{ body }}</p>
+  <form method="post" action="{{ action }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="confirm" value="yes">
+    <div class="actions">
+      <button type="submit" class="button secondary">Remove</button>
+      <a class="button" href="{{ url_for('plans.child_plans', child_id=child_id) }}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

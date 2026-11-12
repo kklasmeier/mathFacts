@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Assign {{ plan.name }}{% endblock %}
+{% block content %}
+<h1>Assign {{ plan.name }}</h1>
+<p class="muted">The student starts at stage 1. The first sheet is ready as soon as you assign the plan.</p>
+<form method="post" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {% for kid in kids %}
+    <label class="check">
+      <input type="checkbox" name="child" value="{{ kid.id }}" {% if kid.id in linked %}checked disabled{% endif %}>
+      <span>{{ kid.name }}{% if kid.id in linked %} · already working this plan{% else %} · will start at stage 1{% endif %}</span>
+    </label>
+  {% else %}
+    <p>Add a student before assigning a plan.</p>
+  {% endfor %}
+  <div class="actions">
+    <button type="submit" class="button">Assign</button>
+    <a class="button secondary" href="{{ url_for('plans.library') }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Badges{% endblock %}
+{% block content %}
+{% include "_child_bar.html" %}
+<h1>Badges · {{ child.name }}</h1>
+<nav class="admin-nav" aria-label="Badge categories">
+  <a href="{{ url_for('progress.badges_page', child_id=child.id) }}">All</a>
+  <a href="{{ url_for('progress.badges_page', child_id=child.id, category='effort') }}">Effort</a>
+  <a href="{{ url_for('progress.badges_page', child_id=child.id, category='achievement') }}">Achievement</a>
+  <a href="{{ url_for('progress.badges_page', child_id=child.id, category='growth') }}">Growth</a>
+</nav>
+<ul class="badge-grid">
+  {% for row in rows %}
+    <li class="card badge-card {% if not row.earned_at %}badge-locked{% endif %}">
+      <p class="badge-mark" aria-hidden="true">{{ row.icon }}</p>
+      <p><strong>{{ row.name }}</strong></p>
+      {% if row.earned_at %}
+        <p class="muted">Earned {{ format_stamp(row.earned_at) }}</p>
+      {% else %}
+        <p class="muted">{{ row.description }}</p>
+      {% endif %}
+    </li>
+  {% endfor %}
+</ul>
+{% endblock %}

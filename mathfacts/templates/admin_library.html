@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Library{% endblock %}
+{% block content %}
+{% include "_admin_nav.html" %}
+<h1>Library</h1>
+<p class="muted">These are the standard plans and badges. A family's copy stays as it was when they made it.</p>
+{% for plan in plans %}
+  <section class="card">
+    <h2>{{ plan.name }}</h2>
+    <ol>
+      {% for stage in stages[plan.id] %}
+        <li>{{ stage.name }}</li>
+      {% endfor %}
+    </ol>
+  </section>
+{% endfor %}
+<h2>Badges</h2>
+<ul class="sheet-list">
+  {% for badge in badges %}
+    <li class="card"><strong>{{ badge.name }}</strong> · {{ badge.description }}</li>
+  {% endfor %}
+</ul>
+{% endblock %}

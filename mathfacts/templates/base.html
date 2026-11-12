@@ -11,36 +11,110 @@
   <script src="{{ url_for('static', filename='app.js') }}" defer></script>
 </head>
 <body>
+{% set endpoint = request.endpoint or '' %}
+{% macro nav_link(endpoint_names, href, label) -%}
+  <a href="{{ href }}"{% if endpoint in endpoint_names %} aria-current="page"{% endif %}>{{ label }}</a>
+{%- endmacro %}
+{% macro appearance_form(label=True) -%}
+  <form method="post" action="{{ url_for('auth.appearance') }}" class="theme-picker" aria-label="Appearance">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="next" value="{{ request.full_path.rstrip('?') }}">
+    {% if label %}<span class="menu-label">Appearance</span>{% endif %}
+    <span class="theme-choices">
+      <button type="submit" name="theme" value="light" class="chip {{ 'chip-on' if theme == 'light' }}">Light</button>
+      <button type="submit" name="theme" value="dark" class="chip {{ 'chip-on' if theme == 'dark' }}">Dark</button>
+      <button type="submit" name="theme" value="auto" class="chip {{ 'chip-on' if theme == 'auto' }}">Match device</button>
+    </span>
+  </form>
+{%- endmacro %}
+{% macro sign_out() -%}
+  <form method="post" action="{{ url_for('auth.logout') }}" class="menu-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="menu-item">Sign out</button>
+  </form>
+{%- endmacro %}
+{% macro account_items() -%}
+  <a class="menu-item" href="{{ url_for('auth.account') }}">Profile</a>
+  <a class="menu-item" href="{{ url_for('auth.change_password') }}">Change password</a>
+  <a class="menu-item" href="{{ url_for('plans.library') }}">Plans</a>
+  {% if current_account['role'] == 'admin' %}
+    <a class="menu-item" href="{{ url_for('admin.index') }}">Admin</a>
+  {% endif %}
+  <div class="menu-divider"></div>
+  {{ appearance_form() }}
+  <div class="menu-divider"></div>
+  {{ sign_out() }}
+{%- endmacro %}
 <header class="site-header">
   <div class="wrap header-inner">
     <a class="brand" href="{{ url_for('web.index') }}">Math Facts</a>
-    <nav class="menu" aria-label="Main">
-      {% if current_account %}
-        <a href="{{ url_for('web.index') }}">Home</a>
-        <a href="{{ url_for('children.index') }}">Children</a>
-        <a href="{{ url_for('sheets.index') }}">Sheets</a>
-        <a href="{{ url_for('sheets.new_sheet') }}">New sheet</a>
-        {% if current_account['role'] == 'admin' %}
-          <a href="{{ url_for('admin.index') }}">Admin</a>
+    {% if current_account and current_account['must_change_password'] %}
+      <div class="header-end">{{ sign_out() }}</div>
+    {% elif current_account %}
+      <nav class="primary-nav" aria-label="Main">
+        {{ nav_link(['web.index'], url_for('web.index'), 'Home') }}
+        {{ nav_link(['sheets.index', 'sheets.detail', 'sheets.rate'], url_for('sheets.index'), 'Sheets') }}
+        {{ nav_link(['sheets.new_sheet'], url_for('sheets.new_sheet'), 'New sheet') }}
+        {{ nav_link(['plans.library', 'plans.editor', 'plans.new_plan', 'plans.assign', 'plans.delete'], url_for('plans.library'), 'Plans') }}
+      </nav>
+      <div class="header-end">
+        {% if nav_child %}
+          <details class="dropdown child-menu">
+            <summary>
+              <span class="swatch swatch-{{ nav_child.color or 'none' }}" aria-hidden="true"></span>
+              <span>{{ nav_child.name }}</span>
+            </summary>
+            <div class="dropdown-panel" role="menu">
+              <span class="menu-label">Switch child</span>
+              {% for k in nav_kids %}
+                <a class="menu-item" href="{{ url_for('web.index', child=k.id) }}"{% if k.id == nav_child.id %} aria-current="true"{% endif %}>
+                  <span class="swatch swatch-{{ k.color or 'none' }}" aria-hidden="true"></span>
+                  {{ k.name }}
+                </a>
+              {% endfor %}
+              <div class="menu-divider"></div>
+              <a class="menu-item" href="{{ url_for('children.index') }}">Manage children</a>
+            </div>
+          </details>
+        {% else %}
+          <a class="header-cta" href="{{ url_for('children.new') }}">Add a child</a>
         {% endif %}
-        <a href="{{ url_for('auth.account') }}">{{ current_account['display_name'] or current_account['username'] }}</a>
-        <a href="{{ url_for('auth.change_password') }}">Password</a>
-        <form method="post" action="{{ url_for('auth.logout') }}" class="inline">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button type="submit" class="link-button">Sign out</button>
-        </form>
-      {% else %}
-        <a href="{{ url_for('auth.login') }}">Sign in</a>
-        <a href="{{ url_for('auth.register') }}">Create account</a>
-      {% endif %}
-    </nav>
-    <form method="post" action="{{ url_for('auth.appearance') }}" class="theme-picker" aria-label="Appearance">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <input type="hidden" name="next" value="{{ request.full_path.rstrip('?') }}">
-      <button type="submit" name="theme" value="light" class="chip {{ 'chip-on' if theme == 'light' }}">Light</button>
-      <button type="submit" name="theme" value="dark" class="chip {{ 'chip-on' if theme == 'dark' }}">Dark</button>
-      <button type="submit" name="theme" value="auto" class="chip {{ 'chip-on' if theme == 'auto' }}">Auto</button>
-    </form>
+        <details class="dropdown account-menu">
+          <summary><span class="avatar" aria-hidden="true">{{ (current_account['display_name'] or current_account['username'])[:1]|upper }}</span><span class="account-name">{{ current_account['display_name'] or current_account['username'] }}</span></summary>
+          <div class="dropdown-panel dropdown-right" role="menu">
+            {{ account_items() }}
+          </div>
+        </details>
+        <details class="dropdown phone-menu">
+          <summary>Menu</summary>
+          <div class="dropdown-panel dropdown-right" role="menu">
+            <a class="menu-item" href="{{ url_for('web.index') }}">Home</a>
+            <a class="menu-item" href="{{ url_for('sheets.index') }}">Sheets</a>
+            <a class="menu-item" href="{{ url_for('sheets.new_sheet') }}">New sheet</a>
+            <a class="menu-item" href="{{ url_for('plans.library') }}">Plans</a>
+            {% if nav_child %}
+              <div class="menu-divider"></div>
+              <span class="menu-label">{{ nav_child.name }}</span>
+              <a class="menu-item" href="{{ url_for('progress.show', child_id=nav_child.id) }}">Progress</a>
+              <a class="menu-item" href="{{ url_for('progress.badges_page', child_id=nav_child.id) }}">Badges</a>
+              <a class="menu-item" href="{{ url_for('plans.child_plans', child_id=nav_child.id) }}">Plans</a>
+            {% endif %}
+            <div class="menu-divider"></div>
+            <span class="menu-label">{{ current_account['display_name'] or current_account['username'] }}</span>
+            {{ account_items() }}
+          </div>
+        </details>
+      </div>
+    {% else %}
+      <div class="header-end">
+        {% if endpoint != 'auth.login' %}<a class="header-link" href="{{ url_for('auth.login') }}">Sign in</a>{% endif %}
+        {% if endpoint != 'auth.register' %}<a class="header-link" href="{{ url_for('auth.register') }}">Create account</a>{% endif %}
+        <details class="dropdown">
+          <summary aria-label="Appearance">Appearance</summary>
+          <div class="dropdown-panel dropdown-right">{{ appearance_form(label=False) }}</div>
+        </details>
+      </div>
+    {% endif %}
   </div>
 </header>
 

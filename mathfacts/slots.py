@@ -127,21 +127,38 @@ def build_greedy(cells, rows, cols, rng):
     return grid
 
 
-def arrange(facts, rows, cols, order, rng):
-    """Fill a rows × cols page from the pool. Returns an Arrangement."""
+def arrange(facts, rows, cols, order, rng, review=None, review_pct=0):
+    """Fill a rows × cols page from the pool. Returns an Arrangement.
+
+    `review` and `review_pct` fill that share of the page from earlier stages.
+    With no review facts the page is exactly the current pool, as before.
+    """
     if order not in ORDERS:
         raise ValueError(f"unknown order: {order}")
     if not facts:
         raise ValueError("the pool is empty")
 
     slots = rows * cols
-    unique = len(set(facts))
+    review = list(review or [])
+    review_n = 0
+    if review and review_pct:
+        review_n = int(round(slots * review_pct / 100))
+        review_n = max(0, min(slots, review_n))
+    current_n = slots - review_n
+    unique = len(set(facts) | set(review))
     separated = False
     cells = []
     for _ in range(ATTEMPTS):
-        cells = choose(facts, slots, order, rng)
-        if order == "shuffled":
-            rng.shuffle(cells)
+        if review_n:
+            cells = choose(review, review_n, "shuffled", rng)
+            if current_n:
+                cells.extend(choose(facts, current_n, order, rng))
+            if order != "sequential":
+                rng.shuffle(cells)
+        else:
+            cells = choose(facts, slots, order, rng)
+            if order == "shuffled":
+                rng.shuffle(cells)
         if unique == 1:
             # One fact only: no arrangement can separate it, so skip the search.
             break
@@ -158,9 +175,9 @@ def arrange(facts, rows, cols, order, rng):
 
     return Arrangement(
         cells=cells,
-        pool_size=len(facts),
+        pool_size=unique,
         slots=slots,
-        repeats=len(facts) < slots,
+        repeats=unique < slots,
         all_same=unique == 1,
         separated=separated or slots == 1,
     )

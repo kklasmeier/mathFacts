@@ -197,6 +197,138 @@ MIGRATIONS = {
         """,
         "CREATE INDEX audit_log_at ON audit_log(at)",
     ],
+    # Slice 5: plans, the child's place in a plan, and badges. System rows
+    # have a null account. A family's copy points at the template it came from.
+    6: [
+        """
+        CREATE TABLE plans (
+            id INTEGER PRIMARY KEY,
+            account_id INTEGER REFERENCES accounts(id) ON DELETE CASCADE,
+            source_template_id INTEGER REFERENCES plans(id) ON DELETE SET NULL,
+            operation TEXT NOT NULL CHECK (operation IN ('add', 'sub', 'mul', 'div')),
+            name TEXT NOT NULL,
+            is_system INTEGER NOT NULL DEFAULT 0,
+            created_at INTEGER NOT NULL
+        )
+        """,
+        """
+        CREATE TABLE plan_stages (
+            id INTEGER PRIMARY KEY,
+            plan_id INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+            position INTEGER NOT NULL,
+            stage_key TEXT NOT NULL,
+            name TEXT NOT NULL,
+            a_spec TEXT NOT NULL,
+            b_spec TEXT NOT NULL,
+            include_reverse INTEGER NOT NULL DEFAULT 0,
+            pair_rule TEXT NOT NULL DEFAULT 'any',
+            pair_rule_limit INTEGER,
+            default_orientation TEXT NOT NULL DEFAULT 'horizontal',
+            default_page_direction TEXT NOT NULL DEFAULT 'portrait',
+            default_cols INTEGER NOT NULL DEFAULT 5,
+            default_rows INTEGER NOT NULL DEFAULT 4,
+            review_mix_pct INTEGER NOT NULL DEFAULT 20,
+            mixed INTEGER NOT NULL DEFAULT 0,
+            adv_x INTEGER NOT NULL DEFAULT 2,
+            adv_y INTEGER NOT NULL DEFAULT 3,
+            adv_min_performance INTEGER NOT NULL DEFAULT 3,
+            adv_min_pace INTEGER,
+            adv_min_support INTEGER
+        )
+        """,
+        "CREATE INDEX plan_stages_plan ON plan_stages(plan_id, position)",
+        """
+        CREATE TABLE child_plan_progress (
+            child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+            plan_id INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+            current_stage_id INTEGER REFERENCES plan_stages(id) ON DELETE SET NULL,
+            stage_started_at INTEGER NOT NULL,
+            ready_to_advance INTEGER NOT NULL DEFAULT 0,
+            snoozed_until INTEGER,
+            finished INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (child_id, plan_id)
+        )
+        """,
+        """
+        CREATE TABLE stage_history (
+            id INTEGER PRIMARY KEY,
+            child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+            plan_id INTEGER NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+            stage_id INTEGER REFERENCES plan_stages(id) ON DELETE SET NULL,
+            entered_at INTEGER NOT NULL,
+            exited_at INTEGER,
+            exit_reason TEXT
+        )
+        """,
+        """
+        CREATE TABLE badges (
+            id INTEGER PRIMARY KEY,
+            account_id INTEGER REFERENCES accounts(id) ON DELETE CASCADE,
+            key TEXT NOT NULL,
+            name TEXT NOT NULL,
+            description TEXT NOT NULL,
+            icon TEXT NOT NULL,
+            category TEXT NOT NULL,
+            rule_type TEXT NOT NULL,
+            tier INTEGER,
+            created_at INTEGER NOT NULL
+        )
+        """,
+        "CREATE UNIQUE INDEX badges_key ON badges(key, ifnull(account_id, 0))",
+        """
+        CREATE TABLE child_badges (
+            id INTEGER PRIMARY KEY,
+            child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+            badge_id INTEGER NOT NULL REFERENCES badges(id) ON DELETE CASCADE,
+            earned_at INTEGER NOT NULL,
+            source_worksheet_id INTEGER,
+            message TEXT,
+            shown_on_worksheet_id INTEGER,
+            shown_at INTEGER,
+            UNIQUE (child_id, badge_id)
+        )
+        """,
+        "ALTER TABLE worksheets ADD COLUMN plan_stage_id INTEGER REFERENCES plan_stages(id) ON DELETE SET NULL",
+    ],
+    # A stage carries its own operation. The plan stores the sheet shape.
+    # min_sheets is the floor; the last finished sheet decides graduation.
+    7: [
+        "ALTER TABLE plan_stages ADD COLUMN operation TEXT",
+        """
+        UPDATE plan_stages
+        SET operation = (
+            SELECT operation FROM plans WHERE plans.id = plan_stages.plan_id
+        )
+        WHERE operation IS NULL
+        """,
+        "ALTER TABLE plan_stages ADD COLUMN min_sheets INTEGER NOT NULL DEFAULT 3",
+        """
+        UPDATE plan_stages
+        SET min_sheets = CASE WHEN adv_y >= 1 THEN adv_y ELSE 3 END
+        """,
+        "ALTER TABLE plans ADD COLUMN default_cols INTEGER NOT NULL DEFAULT 5",
+        "ALTER TABLE plans ADD COLUMN default_rows INTEGER NOT NULL DEFAULT 4",
+        "ALTER TABLE plans ADD COLUMN spacing TEXT NOT NULL DEFAULT 'normal'",
+    ],
+    # Sheet shape lives on the plan: across, down, spacing, and problem direction.
+    8: [
+        "ALTER TABLE plans ADD COLUMN default_orientation TEXT NOT NULL DEFAULT 'horizontal'",
+    ],
+    # Standard plans do not cap facts with Sum at most. The old "Sums to 10"
+    # stage is every pair from 0–10.
+    9: [
+        """
+        UPDATE plan_stages
+        SET name = 'Facts 0–10', pair_rule = 'any', pair_rule_limit = NULL
+        WHERE stage_key = 'add-sums-10'
+          AND plan_id IN (SELECT id FROM plans WHERE is_system = 1)
+        """,
+        """
+        UPDATE badges
+        SET name = 'Facts 0–10 Complete', description = 'Move past Facts 0–10.'
+        WHERE key = 'stage_complete:add-sums-10' AND account_id IS NULL
+        """,
+    ],
 }
 
 SCHEMA_VERSION = max(MIGRATIONS)

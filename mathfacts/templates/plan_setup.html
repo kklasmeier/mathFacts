@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Set up plans{% endblock %}
+{% block content %}
+{% include "_child_bar.html" %}
+<h1>Set up plans for {{ child.name }}</h1>
+<p class="muted">Step {{ step }} of 5</p>
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+<form method="post" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="step" value="{{ step }}">
+  {% if step != '1' %}
+    {% for op in ops %}
+      <input type="hidden" name="ops" value="{{ op }}">
+    {% endfor %}
+  {% endif %}
+  {% if step != '2' %}
+    {% for op in ops %}
+      <input type="hidden" name="src_{{ op }}" value="{{ request.values.get('src_' + op, 'system') }}">
+    {% endfor %}
+  {% endif %}
+  {% if step != '3' %}
+    {% for op in ops %}
+      <input type="hidden" name="stage_{{ op }}" value="{{ request.values.get('stage_' + op, '1') }}">
+    {% endfor %}
+  {% endif %}
+  {% if step != '4' %}
+    <input type="hidden" name="x" value="{{ advancement.x }}">
+    <input type="hidden" name="y" value="{{ advancement.y }}">
+    <input type="hidden" name="performance" value="{{ advancement.performance }}">
+    <input type="hidden" name="pace" value="{{ advancement.pace or '' }}">
+    <input type="hidden" name="support_min" value="{{ advancement.support or '' }}">
+  {% endif %}
+
+  {% if step == '1' %}
+    <fieldset>
+      <legend>Operations</legend>
+      <div class="choices-vertical">
+        {% for key in ('add', 'sub', 'mul', 'div') %}
+          <label class="check">
+            <input type="checkbox" name="ops" value="{{ key }}" {% if key in existing or key in ops %}checked{% endif %} {% if key in existing %}disabled{% endif %}>
+            <span>{{ operations[key] }}{% if key in existing %} · Already set up{% endif %}</span>
+          </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+    <p class="hint">Choose at least one. You can add another operation later.</p>
+  {% elif step == '2' %}
+    {% for op in ops if op not in existing %}
+      <fieldset>
+        <legend>{{ operations[op] }}</legend>
+        <div class="choices-vertical">
+          <label class="choice"><input type="radio" name="src_{{ op }}" value="system" checked> <span>Standard plan</span></label>
+          {% for plan in sources[op] %}
+            <label class="choice"><input type="radio" name="src_{{ op }}" value="plan-{{ plan.id }}"> <span>{{ plan.name }}</span></label>
+          {% endfor %}
+          <label class="choice"><input type="radio" name="src_{{ op }}" value="scratch"> <span>Start from scratch</span></label>
+        </div>
+      </fieldset>
+    {% endfor %}
+  {% elif step == '3' %}
+    {% for op in ops if op not in existing %}
+      <fieldset>
+        <legend>{{ operations[op] }}</legend>
+        {% if stages[op] %}
+          <div class="choices-vertical">
+            {% for stage in stages[op] %}
+              <label class="choice">
+                <input type="radio" name="stage_{{ op }}" value="{{ stage.position }}" {% if stage.position == 1 %}checked{% endif %}>
+                <span>{{ stage.position }}. {{ stage.name }}</span>
+              </label>
+            {% endfor %}
+          </div>
+          {% if op == 'div' %}
+            <p class="hint">Division is easier after the matching multiplication stage. That is a suggestion, not a lock.</p>
+          {% endif %}
+        {% else %}
+          <p>A scratch plan starts with one empty stage. You will add its facts next.</p>
+        {% endif %}
+      </fieldset>
+    {% endfor %}
+  {% elif step == '4' %}
+    <input type="hidden" name="x" value="{{ advancement.x }}">
+    <label>Sheets before moving on
+      <input type="number" name="y" min="1" max="10" value="{{ advancement.y }}">
+    </label>
+    <label>The last sheet must be
+      <select name="performance">
+        <option value="4" {% if advancement.performance == 4 %}selected{% endif %}>Excellent</option>
+        <option value="3" {% if advancement.performance == 3 %}selected{% endif %}>Good or better</option>
+        <option value="2" {% if advancement.performance == 2 %}selected{% endif %}>OK or better</option>
+      </select>
+    </label>
+    <p class="hint">The student finishes at least this many sheets on a stage. The last finished sheet then decides the move to the next stage. Sheets finished with an aid count.</p>
+    <label>Pace
+      <select name="pace">
+        <option value="" selected>Not required</option>
+        <option value="3">Steady or faster</option>
+        <option value="4">Fast</option>
+      </select>
+    </label>
+    <label>Support
+      <select name="support_min">
+        <option value="" selected>Not required</option>
+        <option value="2">Some help or less</option>
+        <option value="3">On their own</option>
+      </select>
+    </label>
+  {% else %}
+    <p>These settings are written onto every stage. After the minimum number of sheets, a last sheet that meets the bar moves the student to the next stage.</p>
+    <ul>
+      {% for op in ops if op not in existing %}
+        <li>{{ operations[op] }} · start at stage {{ request.values.get('stage_' + op, '1') }} · at least {{ advancement.y }} sheets, then the last one at {{ bars[advancement.performance] }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  <div class="actions">
+    {% if step == '5' %}
+      <button type="submit" name="action" value="generate" class="button">Generate the first sheet</button>
+      <button type="submit" name="action" value="done" class="button secondary">Done</button>
+    {% else %}
+      <button type="submit" class="button">Continue</button>
+    {% endif %}
+  </div>
+</form>
+{% endblock %}

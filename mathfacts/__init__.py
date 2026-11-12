@@ -13,6 +13,8 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from . import db as database
 from .config import Config
 from .routes_admin import bp as admin_bp
+from .routes_plans import bp as plans_bp
+from .routes_progress import bp as progress_bp
 from .routes_auth import bp as auth_bp
 from .routes_children import bp as children_bp
 from .routes_sheets import bp as sheets_bp
@@ -47,6 +49,7 @@ def create_app(test_config=None):
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
     database.init_db(app.config["DATABASE"])
+    _seed_library(app)
     csrf.init_app(app)
     install_sessions(app)
     app.register_blueprint(web_bp)
@@ -54,13 +57,24 @@ def create_app(test_config=None):
     app.register_blueprint(children_bp)
     app.register_blueprint(sheets_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(plans_bp)
+    app.register_blueprint(progress_bp)
 
     @app.context_processor
     def inject_common():
         theme = request.cookies.get("theme", "auto")
         if theme not in ("light", "dark", "auto"):
             theme = "auto"
-        return {"theme": theme, "current_account": g.get("account")}
+        account = g.get("account")
+        nav_kids, nav_child = [], None
+        if account is not None and not account["must_change_password"]:
+            nav_kids, nav_child = _nav_children(account["id"])
+        return {
+            "theme": theme,
+            "current_account": account,
+            "nav_kids": nav_kids,
+            "nav_child": nav_child,
+        }
 
     @app.after_request
     def security_headers(response):
@@ -74,3 +88,28 @@ def create_app(test_config=None):
         return response
 
     return app
+
+
+def _nav_children(account_id):
+    """Active children for the header child menu, and the one last chosen."""
+    from . import children, sheets
+    from .sessions import get_db
+
+    db = get_db()
+    kids = children.list_children(db, account_id)
+    if not kids:
+        return [], None
+    saved = sheets.get_pref(db, account_id, "last_child_id")
+    chosen = next((k for k in kids if saved and str(k["id"]) == saved), kids[0])
+    return kids, chosen
+
+
+def _seed_library(app):
+    """System plans and badges. Safe to run on every start."""
+    from .catalog import seed
+    conn = database.connect(app.config["DATABASE"])
+    try:
+        seed(conn)
+        conn.commit()
+    finally:
+        conn.close()

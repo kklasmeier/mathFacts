@@ -1,0 +1,7 @@
+{% set endpoint = request.endpoint or '' %}
+<nav class="child-bar" aria-label="{{ child.name }}">
+  <span class="child-name"><span class="swatch swatch-{{ child.color or 'none' }}" aria-hidden="true"></span>{{ child.name }}{% if child.grade %} · Grade {{ child.grade }}{% endif %}</span>
+  <a href="{{ url_for('progress.show', child_id=child.id) }}"{% if endpoint == 'progress.show' %} aria-current="page"{% endif %}>Progress</a>
+  <a href="{{ url_for('progress.badges_page', child_id=child.id) }}"{% if endpoint == 'progress.badges_page' %} aria-current="page"{% endif %}>Badges</a>
+  <a href="{{ url_for('plans.child_plans', child_id=child.id) }}"{% if endpoint in ('plans.child_plans', 'plans.setup') %} aria-current="page"{% endif %}>Plans</a>
+</nav>

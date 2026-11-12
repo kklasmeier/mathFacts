@@ -1,0 +1,9 @@
+{% macro tip(title) -%}
+<details class="help">
+  <summary aria-label="Help: {{ title }}">?</summary>
+  <div class="help-pop">
+    <p class="help-title">{{ title }}</p>
+    {{ caller() }}
+  </div>
+</details>
+{%- endmacro %}

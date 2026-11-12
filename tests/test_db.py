@@ -19,6 +19,12 @@ TABLES = {
     "account_settings",
     "app_settings",
     "audit_log",
+    "plans",
+    "plan_stages",
+    "child_plan_progress",
+    "stage_history",
+    "badges",
+    "child_badges",
 }
 
 

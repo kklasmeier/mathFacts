@@ -24,6 +24,7 @@
     <div><strong>{{ c.name }}</strong>{% if c.grade %} <span class="muted">· Grade {{ c.grade }}</span>{% endif %}</div>
     <div class="row-actions">
       <a href="{{ url_for('sheets.new_sheet', child=c.id) }}">New sheet</a>
+      <a href="{{ url_for('plans.child_plans', child_id=c.id) }}">Plans</a>
       <a href="{{ url_for('children.edit', child_id=c.id) }}">Edit</a>
     </div>
   </li>
